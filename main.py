@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Tuple, Dict
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split, cross_validate
-from sklearn.metrics import plot_confusion_matrix, log_loss, confusion_matrix
+from sklearn.metrics import log_loss, confusion_matrix
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 import addcopyfighandler # enables ctrl + c -> save matplotlib figure to clipboard
@@ -238,6 +238,10 @@ class KickstartedPredict():
             bar_y = self.score_df[param].loc[bar_x]
             bar_err = self.score_df[param+"_std"].loc[bar_x]
 
+            if param != "test_BIC":
+                bar_err[(bar_y+bar_err)>1.0] = np.clip(bar_y+bar_err, 0.0, 1.0) - bar_y
+                bar_err[(bar_y-bar_err)<0.0] = np.clip(bar_y-bar_err, 0.0, 1.0) + bar_y
+                
             plt.errorbar(bar_x, bar_y, yerr=bar_err, fmt = 'o',color = 'black',
             ecolor = 'black', elinewidth = 2, capsize=10, capthick = 2)
             plt.title(param)
