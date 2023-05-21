@@ -173,7 +173,7 @@ class KickstartedPredict():
 
 
         # X_test, y_test -> hold-out set
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.6, random_state=123)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.6, random_state=123)
 
         scaler = StandardScaler()
         logreg = LogisticRegression(C=10, fit_intercept=True, penalty='l2')
