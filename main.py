@@ -92,9 +92,9 @@ class KickstartedPredict():
         self.df['category'] = self.df.apply(f, axis=1)
 
         # Convert categorical data
-        self.df_prepared: pd.DataFrame = pd.get_dummies(self.df, drop_first=True)
-        print(self.df.loc[1])
-        print(self.df_prepared.loc[1])
+        self.df_prepared: pd.DataFrame = pd.get_dummies(self.df, drop_first=True, dtype="float")
+        # print(self.df.loc[1])
+        # print(self.df_prepared.loc[1])
         # Convert NaN to 0
         #print(self.df_prepared.isna().sum())  # two blurb_word_len is NaN
         self.df_prepared.blurb_word_len.fillna(0, inplace=True)
@@ -183,7 +183,7 @@ class KickstartedPredict():
 
         # use optional scaler and fit train data
         clf = pipeline.fit(X_train, y_train)
-
+        print(clf.score(X_test, y_test))
         #Plot conf matrix
         if plot_conf_matrix:
             ConfusionMatrixDisplay.from_estimator(
@@ -223,7 +223,6 @@ class KickstartedPredict():
 
         #print(self.score_df)
         # print(scores)
-
 
     def prepare_plots(self) -> None:
 
