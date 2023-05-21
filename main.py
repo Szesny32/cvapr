@@ -37,20 +37,21 @@ class KickstartedPredict():
         """Load data to self.df dataframe. Param use_columns==None means all columns are used."""
 
         for i, filename in enumerate(os.scandir(Path(self.data_folder_path))):
-            i += 1
-            if i > self.num_of_files_to_load:
-                break
+            if filename.name.endswith('.csv'):
+                i += 1
+                if i > self.num_of_files_to_load:
+                    break
 
-            if filename.is_file():
-                if i == 1:
-                    #Initial dataframe for mergeing
-                    self.df = pd.read_csv(filename, usecols=self.columns_to_use, )
-                    print(self.df.columns)
-                    continue
+                if filename.is_file():
+                    if i == 1:
+                        #Initial dataframe for mergeing
+                        self.df = pd.read_csv(filename, usecols=self.columns_to_use, )
+                        print(self.df.columns)
+                        continue
 
-                #Load new df and merge it to the main one
-                new_df = pd.read_csv(filename, usecols=self.columns_to_use)
-                self.df = pd.concat([self.df, new_df])
+                    #Load new df and merge it to the main one
+                    new_df = pd.read_csv(filename, usecols=self.columns_to_use)
+                    self.df = pd.concat([self.df, new_df])
 
     def prepare_data(self) -> None:
         # drop other states than ['successful', 'failed']
@@ -241,7 +242,7 @@ class KickstartedPredict():
             if param != "test_BIC":
                 bar_err[(bar_y+bar_err)>1.0] = np.clip(bar_y+bar_err, 0.0, 1.0) - bar_y
                 bar_err[(bar_y-bar_err)<0.0] = np.clip(bar_y-bar_err, 0.0, 1.0) + bar_y
-                
+
             plt.errorbar(bar_x, bar_y, yerr=bar_err, fmt = 'o',color = 'black',
             ecolor = 'black', elinewidth = 2, capsize=10, capthick = 2)
             plt.title(param)
@@ -346,7 +347,8 @@ class KickstartedPredict():
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     predictor = KickstartedPredict(
-        data_folder_path=r"C:\Users\kbklo\Desktop\Studia\_INFS2\CVaPR\Projekt\Data",
-        num_of_files_to_load = 50,
+        data_folder_path=r"G:\Mój dysk\CVAPR",
+        num_of_files_to_load = 60,
+
     )
     predictor.run()
