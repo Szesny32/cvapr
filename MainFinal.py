@@ -173,15 +173,15 @@ class KickstartedPredict():
                 # "C": ["float", 1, 1000]
             }
         })
-        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        print(date_string)
+        # date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        # print(date_string)
         searcher = DifferentialEvolution(score_metric="f1")
         self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, popsize=1)
 
-        file = open('/Outputs/DIFF_EVO_%s'%date_string, 'w')
+        # file = open('/Outputs/DIFF_EVO_%s'%date_string, 'w')
         # dump information to that file
-        pickle.dump(self.score, file)
-        file.close()
+        # pickle.dump(self.score, file)
+        # file.close()
 
 
 
