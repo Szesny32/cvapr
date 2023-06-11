@@ -265,7 +265,6 @@ class KickstartedPredict():
         for col in self.X.columns[:]:
             self.PCAindicators(np.array(self.X[col]).reshape(-1, 1), np.array(self.y), col_label = col)
 
-
     def UMAP(self) -> None:
         #X = self.df_prepared
         reducer = umap.UMAP(n_components=2)
@@ -387,7 +386,6 @@ class KickstartedPredict():
             self.score_dfPCA = pd.DataFrame(data = col_score, index = [col_label])
         else:
             self.score_dfPCA.loc[col_label] = col_score
-
 
     def SISO(self) -> None:
         y: pd.DataFrame = self.df_prepared['state']
@@ -573,8 +571,8 @@ class KickstartedPredict():
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     predictor = KickstartedPredict(
-        data_folder_path=r"E:\Studia\Magistrat\cvapr\proj\CVAPR",
-        num_of_files_to_load = 60,
+        data_folder_path=r"C:\Users\kbklo\Desktop\Studia\_INFS2\CVaPR\Projekt\Data",
+        num_of_files_to_load = 5,
 
     )
     predictor.run()

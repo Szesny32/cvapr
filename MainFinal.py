@@ -9,21 +9,23 @@ import json
 from pathlib import Path
 from typing import List, Tuple, Dict
 from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
-from sklearn.model_selection import train_test_split, cross_validate
+from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 from sklearn.metrics import log_loss, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.model_selection import GridSearchCV
-import time
-from datetime import timedelta
-import itertools
+
 from collections import OrderedDict
 import seaborn as sns
 
-
 import Scores
+
+
+from Searchers import *
+
+
 # import addcopyfighandler # enables ctrl + c -> save matplotlib figure to clipboard
 
 plt.rcParams.update({'font.size': 20})
@@ -34,16 +36,6 @@ ETAP III:   https://docs.google.com/document/d/1oJiQtZmKK2RHHHmcHS1ksXMz2Zn4dayV
 """
 
 
-def print_with_border(string:str, space:int = 3):
-    print("#"*(len(string)+(2+2*space)))
-    for i in range(space-1):
-        print("#%s#"%(" "*(len(string)+2*space)))
-
-    print("#%s%s%s#"%(" "*space ,string, " "*space))
-
-    for i in range(space-1):
-        print("#%s#"%(" "*(len(string)+2*space)))
-    print("#"*(len(string)+(2+2*space)))
 
 # plt.style.use('seaborn')
 
@@ -65,6 +57,7 @@ class KickstartedPredict():
         # self.SISO()
         # self.prepare_plotsPCA()
         self.hyper_paramether_tuning()
+
 
     def load_data(self) -> None:
         """Load data to self.df dataframe. Param use_columns==None means all columns are used."""
@@ -148,157 +141,52 @@ class KickstartedPredict():
         y: pd.DataFrame = self.df_prepared['state']
         X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
 
-        # params = {
-        #     "scalers": ["StandardScaler()"],
-        #     "PCAs": ["PCA(n_components=5)", "PCA(n_components=10)"],
-        #     "UMAPs": ["umap.UMAP(n_components=2)"],
-        #     "LogRegs": ["LogisticRegression()", "LogisticRegression(class_weight='balanced')"]
-        # }
-        x_t =  [None, 'balanced'],
-        y_t = [0.1, 1, 100, 1000]
-        print(np.meshgrid(x_t, y_t))
 
+        # Example for CustomGridSearch
+        # params = OrderedDict({
+        #     "scalers": ["StandardScaler()"],
+        #     "PCA": {
+        #         "n_components": [5]
+        #     },
+        #     "UMAP": {
+        #         "n_components": [10]
+        #     },
+        #     "LogisticRegression": {
+        #         "class_weight": [None, 'balanced'],
+        #         # "C": [0.1, 1, 100, 1000]
+        #     }
+        # })
+        # searcher = CustomGridSearch()
+        # self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, kfold_on_all=False)
+        #
+        # return
         params = OrderedDict({
             "scalers": ["StandardScaler()"],
             "PCA": {
-                "n_components": [5, 10, 15]
+                "n_components": ["int", 2, 10]
             },
             "UMAP": {
-                "n_components": [2, 5]
+                "n_components": ["int", 2, 10]
             },
             "LogisticRegression": {
-                "class_weight": [None, 'balanced'],
-                "C": [0.1, 1, 100, 1000]
+                "class_weight": ["categorical", None, 'balanced'],
+                # "C": ["float", 1, 1000]
             }
         })
+        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        print(date_string)
+        searcher = DifferentialEvolution(score_metric="f1")
+        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, popsize=1)
 
-        self.score = self.custom_grid_search(X_all, y, params)
-
-    def custom_grid_search(self, X, y, params: Dict, cross_validations = 3, max_iter = 1000) -> pd.DataFrame:
-        def create_lists(paramethers: Dict, return_strings: bool = False) -> Dict:
-            """
-            Creates list of classes specified in pramethers.\n
-            intput: Parameters = { "a": [1, 2, 3]}\n
-            will give output: [a(1), a(2), a(3)]
-
-            :param paramethers: Keys can be given in two ways:
-                1. custom_name: [Class(param=1), Class(param=2)]
-                2. Class: {param: [1, 2]}
-            :param return_strings
-            :return: Dictionary with key name same as in paramethers.
-            Values are the list classes
-            """
-            ret_list = {}
-            ret_list_strings = {}
-            for key in paramethers:
-                # eval(str) - creates object from string
-                obj = paramethers[key]
-                if isinstance(obj, List):
-                    ret_list[key] = [eval(x) for x in obj]
-                    ret_list_strings[key] = obj
-                elif isinstance(obj, Dict):
-                    param_grid = list(itertools.product(*obj.values()))
-                    obj_list = []
-                    obj_list_strings = []
-                    for cord in param_grid:
-                        temp = "%s("%key
-                        for p_i, param in enumerate(obj):
-                            value = cord[p_i]
-                            if isinstance(value, str):
-                                value = "'"+value+"'"
-
-                            temp += "%s=%s," %(str(param), value)
-                        temp += ")"
-                        print(temp)
-                        obj_list.append(eval(temp))
-                        obj_list_strings.append(temp)
-                    ret_list[key] = obj_list
-                    ret_list_strings[key] = obj_list_strings
-
-            print(ret_list)
-            if return_strings:
-                return [ret_list, ret_list_strings]
-            else:
-                return ret_list
-
-        start_time = time.monotonic()
-        current_iter = 1
-
-        param_grid, param_grid_strings = create_lists(params, return_strings=True)
-        params_keys = list(params.keys())
-
-
-        scalers = param_grid[params_keys[0]]
-        PCAs = param_grid[params_keys[1]]
-        UMAPs = param_grid[params_keys[2]]
-        LogRegs = param_grid[params_keys[3]]
-
-        score_df = pd.DataFrame()
-
-        all_iters = len(scalers) * len(PCAs) * len(UMAPs) * len(LogRegs)
-        print_with_border("Creating grid search with %d iterations" % all_iters)
-        for s_i, scaler in enumerate(scalers):
-
-            X_scaled = scaler.fit_transform(X, y)
-
-            for p_i, pca in enumerate(PCAs):
-
-                X_scaled_pca = pca.fit_transform(X_scaled, y)
-
-                for u_i, UMAP in enumerate(UMAPs):
-
-                    X_scaled_pca_umap = UMAP.fit_transform(X_scaled_pca, y)
-
-                    # Splitting into train and test sets
-                    X_train, X_test, y_train, y_test = train_test_split(X_scaled_pca_umap, y, test_size=0.3,
-                                                                        random_state=123)
-
-                    for lr_i, logReg in enumerate(LogRegs):
-                        reg_time = time.monotonic() - start_time
-                        time_left = (all_iters - current_iter) * reg_time / current_iter
-                        sys.stdout.write(f"\r %.2f %% done | Elapsed time: %s | Estimated time left: %s" % (
-                            current_iter / all_iters * 100,
-                            str(timedelta(seconds=reg_time)).split('.', 2)[0],  # Split is used to remove ms
-                            str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
-                        ))
-                        sys.stdout.flush()
-
-                        sys.stdout.write(f"\r %.2f %% done | Elapsed time: %s | Estimated time left: %s" % (
-                            current_iter / all_iters * 100,
-                            str(timedelta(seconds=reg_time)).split('.', 2)[0],  # Split is used to remove ms
-                            str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
-                        ))
-                        sys.stdout.flush()
-
-                        logReg.max_iter = max_iter
-
-                        scores = cross_validate(logReg, X_scaled_pca_umap, y, cv=cross_validations, scoring = Scores.scores,
-                                                return_train_score=False, return_estimator=False)
+        file = open('/Outputs/DIFF_EVO_%s'%date_string, 'w')
+        # dump information to that file
+        pickle.dump(self.score, file)
+        file.close()
 
 
 
-                        iter_score = {
-                            "scaler": param_grid_strings[params_keys[0]][s_i],
-                            "pca": param_grid_strings[params_keys[1]][p_i],
-                            "umap": param_grid_strings[params_keys[2]][u_i],
-                            "log": param_grid_strings[params_keys[3]][lr_i],
-                        }
 
-                        # Calculate mean from k-validations
-                        for score, k_val_arr in scores.items():
-                            iter_score[score] = k_val_arr.mean()
-                            iter_score[score + "_std"] = 2 * k_val_arr.std()
 
-                        if score_df.empty:
-                            score_df = pd.DataFrame(data=iter_score, index=[current_iter])
-                        else:
-                            score_df.loc[current_iter] = iter_score
-                        # print("iter %d: %.3f" %(current_iter, clf.score(X_test, y_test)))
-
-                        current_iter += 1
-
-        print(score_df)
-        return score_df
 
 
 # Press the green button in the gutter to run the script.
