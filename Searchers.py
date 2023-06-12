@@ -391,13 +391,13 @@ class DifferentialEvolution():
             popsize=popsize,
             maxiter = max_iters,
             polish=False,
-            workers = 1,
+            workers = -1,
             seed = self.random_state,
         )
         print(results)
         return self.score_df
 
-    def func(self, hyperparameters, param_grid, X, y, cross_validations):
+    def func(self, hyperparameters, param_grid, X, y, cross_validations, multithread = False):
         start_time = time.monotonic()
 
         scaler = param_grid['scalers'][0]
@@ -437,11 +437,11 @@ class DifferentialEvolution():
         for score, k_val_arr in scores.items():
             iter_score[score] = k_val_arr.mean()
             iter_score[score + "_std"] = 2 * k_val_arr.std()
-
-        if self.score_df.empty:
-            score_df = pd.DataFrame(data=iter_score, index=[self.evaluation_i])
-        else:
-            self.score_df.loc[self.evaluation_i] = iter_score
+        if not multithread:
+            if self.score_df.empty:
+                score_df = pd.DataFrame(data=iter_score, index=[self.evaluation_i])
+            else:
+                self.score_df.loc[self.evaluation_i] = iter_score
 
         if self.convert_to_minimum:
             scr = 1-iter_score["test_"+self.score_metric]
@@ -451,15 +451,16 @@ class DifferentialEvolution():
         reg_time_all = time.monotonic() - self.evolution_start_time
         print(hyperparameters)
         print("evaluation: %d: %.2f\t| computation time: %s"%(self.evaluation_i, scr, str(timedelta(seconds=reg_time)).split('.', 2)[0]))
-        time_left = (self.all_evaluations - self.evaluation_i) * reg_time_all / self.evaluation_i
-        sys.stdout.write(f"\r %.2f %% done| Elapsed time: %s | Estimated time left: %s\n" % (
-            (self.evaluation_i-1) / self.all_evaluations * 100,
-            str(timedelta(seconds=reg_time_all)).split('.', 2)[0],  # Split is used to remove ms
-            str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
-        ))
-        sys.stdout.flush()
 
-        self.evaluation_i +=1
+        sys.stdout.flush()
+        if not multithread:
+            time_left = (self.all_evaluations - self.evaluation_i) * reg_time_all / self.evaluation_i
+            sys.stdout.write(f"\r %.2f %% done| Elapsed time: %s | Estimated time left: %s\n" % (
+                (self.evaluation_i - 1) / self.all_evaluations * 100,
+                str(timedelta(seconds=reg_time_all)).split('.', 2)[0],  # Split is used to remove ms
+                str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
+            ))
+            self.evaluation_i +=1
         return scr
 
     def create_objects_from_param_grid(self, hyperparameters, param_grid):

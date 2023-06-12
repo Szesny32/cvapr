@@ -56,7 +56,10 @@ class KickstartedPredict():
         # self.PCA()
         # self.SISO()
         # self.prepare_plotsPCA()
-        self.hyper_paramether_tuning()
+        # self.hyper_paramether_tuning()
+        y: pd.DataFrame = self.df_prepared['state']
+        X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
+        self.plot_umap(X_all, y)
         # self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\GRID_12_06_2023_16_45_22.pickle")
         # print(self.score_df)
 
@@ -154,11 +157,12 @@ class KickstartedPredict():
         params = OrderedDict({
             "scalers": ["QuantileTransformer()"],
             "PCA": {
-                "n_components": [2]
+                "n_components": [2, 5, 10, 20, 30, 40]
             },
             "UMAP": {
-                "n_components": [2],
-                # "n_neighbors": [5, 10]
+                "n_components": [2, 5],
+                "n_neighbors": [5, 10, 20, 50],
+                "min_dist": [0.001, 0.01, 0.1, 0.2, 0.5, 1.0]
             },
             "LogisticRegression": {
                 "class_weight": [None, 'balanced'],
@@ -200,7 +204,28 @@ class KickstartedPredict():
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
 
+    def plot_umap(self, X, y, n_neighbors=15, min_dist=0.1, n_components=2, metric='euclidean'):
+        fig = plt.figure()
+        fit = UMAP(
+            n_neighbors=n_neighbors,
+            min_dist=min_dist,
+            n_components=n_components,
+            metric=metric
+        )
+        u = fit.fit_transform(X, y)
 
+        if n_components == 1:
+            ax = fig.add_subplot(111)
+            ax.scatter(u[:, 0], range(len(u)))
+        if n_components == 2:
+            ax = fig.add_subplot(111)
+            ax.scatter(u[:, 0], u[:, 1])
+        if n_components == 3:
+            ax = fig.add_subplot(111, projection='3d')
+            ax.scatter(u[:, 0], u[:, 1], u[:, 2], s=100)
+
+        print(cross_validate(LogisticRegression(), u, y, scoring=Scores.scores, cv = 5))
+        plt.show()
 
 
 
@@ -210,6 +235,6 @@ class KickstartedPredict():
 if __name__ == '__main__':
     predictor = KickstartedPredict(
         data_folder_path=r"C:\Users\kbklo\Desktop\Studia\_INFS2\CVaPR\Projekt\Data",
-        num_of_files_to_load=2,
+        num_of_files_to_load=60,
     )
     predictor.run()
