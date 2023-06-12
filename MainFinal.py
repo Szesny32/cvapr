@@ -56,12 +56,14 @@ class KickstartedPredict():
         # self.PCA()
         # self.SISO()
         # self.prepare_plotsPCA()
-        # self.hyper_paramether_tuning()
-        y: pd.DataFrame = self.df_prepared['state']
-        X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
-        self.plot_umap(X_all, y)
-        # self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\GRID_12_06_2023_16_45_22.pickle")
+        self.hyper_paramether_tuning()
+        # y: pd.DataFrame = self.df_prepared['state']
+        # X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
+        # self.plot_umap_data_transform(X_all, y)
+        # self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\DIFF_EVO_12_06_2023_20_21_44.pkl")
         # print(self.score_df)
+        # self.score_df = pd.read_csv(".\GRID.csv", sep = ";")
+        # print(self.score_df.test_balanced_accuracy.max())
 
 
     def load_data(self) -> None:
@@ -155,14 +157,14 @@ class KickstartedPredict():
 
         # Example for CustomGridSearch
         params = OrderedDict({
-            "scalers": ["QuantileTransformer()"],
+            "scalers": ["StandardScaler()", "QuantileTransformer()"],
             "PCA": {
-                "n_components": [2, 5, 10, 20, 30, 40]
+                "n_components": [2, 10, 20, 30, 40]
             },
             "UMAP": {
-                "n_components": [2, 5],
-                "n_neighbors": [5, 10, 20, 50],
-                "min_dist": [0.001, 0.01, 0.1, 0.2, 0.5, 1.0]
+                "n_components": [2, 5, 10],
+                "n_neighbors": [5, 20, 50],
+                "min_dist": [0.01, 0.1, 0.5, 1.0]
             },
             "LogisticRegression": {
                 "class_weight": [None, 'balanced'],
@@ -170,47 +172,48 @@ class KickstartedPredict():
             }
         })
         searcher = CustomGridSearch(random_state = self.random_state)
-        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, cross_validations = 3, kfold_on_all=False)
+        self.score: pd.DataFrame = searcher.evaluate_umap_transform_all_cv(X_all, y, params, cross_validations = 5)
 
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pkl"%date_string)
-
+        self.score.to_csv(".\Outputs\GRID_umap_%s.csv"%date_string, sep=";")
+        self.score.to_pickle(".\Outputs\RID_umap_%s.pkl" % date_string)
         return
 
-        params = OrderedDict({
-            "scalers": ["StandardScaler()"],
-            "PCA": {
-                "n_components": ["int", 2, 10]
-            },
-            "UMAP": {
-                # "n_components": ["int", 2, 10]
-                "n_neighbors": ["int", 2, 5]
-            },
-            "LogisticRegressionCV": {
-                # "class_weight": ["categorical", None, 'balanced'],
-                "C": ["float", 0.1, 1000]
-            }
-        })
-
-        searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
-        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
-                                                     cross_validations=2,
-                                                     popsize=3,
-                                                     max_iters=1)
-        #Dump score to file
-        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pkl"%date_string)
+        # params = OrderedDict({
+        #     "scalers": ["StandardScaler()"],
+        #     "PCA": {
+        #         "n_components": ["int", 2, 10]
+        #     },
+        #     "UMAP": {
+        #         # "n_components": ["int", 2, 10]
+        #         "n_neighbors": ["int", 2, 5]
+        #     },
+        #     "LogisticRegressionCV": {
+        #         # "class_weight": ["categorical", None, 'balanced'],
+        #         "C": ["float", 0.1, 1000]
+        #     }
+        # })
+        #
+        # searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
+        # self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
+        #                                              cross_validations=2,
+        #                                              popsize=3,
+        #                                              max_iters=1)
+        # #Dump score to file
+        # date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        # self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pkl"%date_string)
 
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
 
-    def plot_umap(self, X, y, n_neighbors=15, min_dist=0.1, n_components=2, metric='euclidean'):
+    def plot_umap_data_transform(self, X, y, n_neighbors=15, min_dist=0.1, n_components=3, metric='euclidean'):
         fig = plt.figure()
         fit = UMAP(
             n_neighbors=n_neighbors,
             min_dist=min_dist,
             n_components=n_components,
-            metric=metric
+            metric=metric,
+            random_state = self.random_state
         )
         u = fit.fit_transform(X, y)
 
@@ -224,7 +227,7 @@ class KickstartedPredict():
             ax = fig.add_subplot(111, projection='3d')
             ax.scatter(u[:, 0], u[:, 1], u[:, 2], s=100)
 
-        print(cross_validate(LogisticRegression(), u, y, scoring=Scores.scores, cv = 5))
+        print(cross_validate(LogisticRegression(random_state = self.random_state), u, y, scoring=Scores.scores, cv = 5))
         plt.show()
 
 
@@ -235,6 +238,6 @@ class KickstartedPredict():
 if __name__ == '__main__':
     predictor = KickstartedPredict(
         data_folder_path=r"C:\Users\kbklo\Desktop\Studia\_INFS2\CVaPR\Projekt\Data",
-        num_of_files_to_load=60,
+        num_of_files_to_load=2,
     )
     predictor.run()
