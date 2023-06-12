@@ -1,5 +1,9 @@
-from sklearn.metrics import log_loss, confusion_matrix
-from numpy import nan, log
+from sklearn.metrics import log_loss, confusion_matrix, balanced_accuracy_score, f1_score
+from numpy import nan, log, array
+import pandas as pd
+
+from typing import List, Tuple, Dict
+
 
 def sensitivity(clf, X, y) -> float:
     # [trueNegative,falsePositive, falseNegative, truePositive]
@@ -57,6 +61,13 @@ def calculate_bic2(clf, X, y, num_params=2) -> float:
     bic = -2 * log_likelihood + num_params * log(n)
     return bic
 
+def balanced_accuracy(clf, X, y) -> float:
+    y_pred = clf.predict(X)
+    return balanced_accuracy_score(y, y_pred)
+
+def f1(clf, X, y) -> float:
+    y_pred = clf.predict(X)
+    return f1_score(y, y_pred)
 
 scores = {
     "BIC": calculate_bic2,
@@ -64,6 +75,15 @@ scores = {
     "specificity": specificity,  # (also called the true negative rate),
     "NPV": NPV,  # Negative predictive value
     "PPV": PPV,  # Precision or positive predictive value
-    "balanced_accuracy": "balanced_accuracy",
-    'f1': 'f1',
+    "balanced_accuracy": balanced_accuracy,
+    'f1': f1,
 }
+
+def get_scores(clf, X, y) -> Dict:
+    ret_scores = {}
+    for sc_k in scores:
+        scr = scores[sc_k]
+        score = scr(clf, X, y)
+        ret_scores["test_"+sc_k] = array([score])
+
+    return ret_scores

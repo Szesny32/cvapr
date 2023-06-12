@@ -33,8 +33,8 @@ def enumerated_product(*args):
 
 
 class CustomGridSearch():
-    def __init__(self):
-        pass
+    def __init__(self, random_state = 123):
+        self.random_state = random_state
 
     def create_lists(self, paramethers: Dict, return_strings: bool = False) -> Dict:
         """
@@ -88,7 +88,7 @@ class CustomGridSearch():
         else:
             self.evaluate_without_transformers_cv(X, y, params, cross_validations, max_iter)
 
-    def evaluate_with_transformers_cv(self, X, y, params: Dict, cross_validations = 3, max_iter = 1000):
+    def evaluate_with_transformers_cv(self, X, y, params: Dict, cross_validations = 1, max_iter = 1000):
         start_time = time.monotonic()
         current_iter = 1
 
@@ -110,25 +110,19 @@ class CustomGridSearch():
             s_i, p_i, u_i, lr_i= indices
             scaler, pca, UMAP, logReg = objects
 
-            pca.random_state = 123
-            UMAP.random_state = 123
-            logReg.random_state = 123
+            pca.random_state = self.random_state
+            UMAP.random_state = self.random_state
+            logReg.random_state = self.random_state
 
             reg_time = time.monotonic() - start_time
             time_left = (all_iters - current_iter) * reg_time / current_iter
             sys.stdout.write(f"\r %.2f %% done | Elapsed time: %s | Estimated time left: %s" % (
-                current_iter / all_iters * 100,
+                (current_iter-1) / all_iters * 100,
                 str(timedelta(seconds=reg_time)).split('.', 2)[0],  # Split is used to remove ms
                 str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
             ))
             sys.stdout.flush()
 
-            sys.stdout.write(f"\r %.2f %% done | Elapsed time: %s | Estimated time left: %s" % (
-                current_iter / all_iters * 100,
-                str(timedelta(seconds=reg_time)).split('.', 2)[0],  # Split is used to remove ms
-                str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
-            ))
-            sys.stdout.flush()
 
             pipeline = Pipeline([
                 ("scaler", scaler),
@@ -164,6 +158,76 @@ class CustomGridSearch():
         print(score_df)
         return score_df
 
+    # def evaluate_with_transformers_cv(self, X, y, params: Dict, cross_validations = 1, max_iter = 1000):
+    #     start_time = time.monotonic()
+    #     current_iter = 1
+    #
+    #     param_grid, param_grid_strings = self.create_lists(params, return_strings=True)
+    #     params_keys = list(params.keys())
+    #
+    #     scalers = param_grid[params_keys[0]]
+    #     PCAs = param_grid[params_keys[1]]
+    #     UMAPs = param_grid[params_keys[2]]
+    #     LogRegs = param_grid[params_keys[3]]
+    #
+    #
+    #
+    #     score_df = pd.DataFrame()
+    #
+    #     all_iters = len(scalers) * len(PCAs) * len(UMAPs) * len(LogRegs)
+    #     print_with_border("Creating grid search with %d iterations" % all_iters)
+    #     for indices, objects in enumerated_product(scalers, PCAs, UMAPs, LogRegs):
+    #         s_i, p_i, u_i, lr_i= indices
+    #         scaler, pca, UMAP, logReg = objects
+    #
+    #         pca.random_state = self.random_state
+    #         UMAP.random_state = self.random_state
+    #         logReg.random_state = self.random_state
+    #
+    #         reg_time = time.monotonic() - start_time
+    #         time_left = (all_iters - current_iter) * reg_time / current_iter
+    #         sys.stdout.write(f"\r %.2f %% done | Elapsed time: %s | Estimated time left: %s" % (
+    #             (current_iter-1) / all_iters * 100,
+    #             str(timedelta(seconds=reg_time)).split('.', 2)[0],  # Split is used to remove ms
+    #             str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
+    #         ))
+    #         sys.stdout.flush()
+    #
+    #
+    #         pipeline = Pipeline([
+    #             ("scaler", scaler),
+    #             ("pca", pca),
+    #             ("umap", UMAP),
+    #             ("logreg", logReg)
+    #         ])
+    #
+    #         scores = cross_validate(pipeline, X, y, cv=cross_validations,
+    #                                 scoring=Scores.scores,
+    #                                 return_train_score=False, return_estimator=False)
+    #
+    #         iter_score = {
+    #             "scaler": param_grid_strings[params_keys[0]][s_i],
+    #             "pca": param_grid_strings[params_keys[1]][p_i],
+    #             "umap": param_grid_strings[params_keys[2]][u_i],
+    #             "log": param_grid_strings[params_keys[3]][lr_i],
+    #         }
+    #
+    #         # Calculate mean from k-validations
+    #         for score, k_val_arr in scores.items():
+    #             iter_score[score] = k_val_arr.mean()
+    #             iter_score[score + "_std"] = 2 * k_val_arr.std()
+    #
+    #         if score_df.empty:
+    #             score_df = pd.DataFrame(data=iter_score, index=[current_iter])
+    #         else:
+    #             score_df.loc[current_iter] = iter_score
+    #         # print("iter %d: %.3f" %(current_iter, clf.score(X_test, y_test)))
+    #
+    #         current_iter += 1
+    #
+    #     print(score_df)
+    #     return score_df
+
     def evaluate_without_transformers_cv(self, X, y, params: Dict, cross_validations = 3, max_iter = 1000):
         start_time = time.monotonic()
         current_iter = 1
@@ -180,30 +244,27 @@ class CustomGridSearch():
 
         all_iters = len(scalers) * len(PCAs) * len(UMAPs) * len(LogRegs)
         print_with_border("Creating grid search with %d iterations" % all_iters)
+
+        # Splitting into train and test sets
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
+                                                            random_state=self.random_state)
+
         for s_i, scaler in enumerate(scalers):
-
-
-
-            X_scaled = scaler.fit_transform(X, y)
-
+            X_scaled = scaler.fit_transform(X_train, y_train)
             for p_i, pca in enumerate(PCAs):
-                pca.random_state = 123
-                X_scaled_pca = pca.fit_transform(X_scaled, y)
+                pca.random_state = self.random_state
+                X_scaled_pca = pca.fit_transform(X_scaled, y_train)
 
                 for u_i, UMAP in enumerate(UMAPs):
-                    UMAP.random_state = 123
-                    X_scaled_pca_umap = UMAP.fit_transform(X_scaled_pca, y)
-
-                    # Splitting into train and test sets
-                    X_train, X_test, y_train, y_test = train_test_split(X_scaled_pca_umap, y, test_size=0.3,
-                                                                        random_state=123)
-
+                    UMAP.random_state = self.random_state
+                    X_scaled_pca_umap = UMAP.fit_transform(X_scaled_pca, y_train)
+                    X_test_umap = UMAP.transform(X_test)
                     for lr_i, logReg in enumerate(LogRegs):
                         logReg.random_state = 123
                         reg_time = time.monotonic() - start_time
                         time_left = (all_iters - current_iter) * reg_time / current_iter
                         sys.stdout.write(f"\r %.2f %% done | Elapsed time: %s | Estimated time left: %s" % (
-                            current_iter / all_iters * 100,
+                            (current_iter-1) / all_iters * 100,
                             str(timedelta(seconds=reg_time)).split('.', 2)[0],  # Split is used to remove ms
                             str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
                         ))
@@ -216,17 +277,21 @@ class CustomGridSearch():
                         ))
                         sys.stdout.flush()
 
-                        logReg.max_iter = max_iter
 
-                        scores = cross_validate(logReg, X_scaled_pca_umap, y, cv=cross_validations,
-                                                scoring=Scores.scores,
-                                                return_train_score=False, return_estimator=False)
+                        logReg.max_iter = max_iter
+                        logReg.fit(X_scaled_pca_umap, y_train)
+
+                        scores = Scores.get_scores(logReg, X_test_umap, y_test)
 
                         iter_score = {
                             "scaler": param_grid_strings[params_keys[0]][s_i],
+                            "scaler_object": scaler,
                             "pca": param_grid_strings[params_keys[1]][p_i],
+                            "pca_object": pca,
                             "umap": param_grid_strings[params_keys[2]][u_i],
+                            "umap_object": UMAP,
                             "log": param_grid_strings[params_keys[3]][lr_i],
+                            "log_object": logReg,
                         }
 
                         # Calculate mean from k-validations
@@ -246,7 +311,7 @@ class CustomGridSearch():
         return score_df
 
 class DifferentialEvolution():
-    def __init__(self, score_metric = "BIC"):
+    def __init__(self, random_state = 123, score_metric = "BIC"):
         if not score_metric in Scores.scores.keys():
             raise Exception("Given score metric does not exists in Scores")
 
@@ -254,24 +319,15 @@ class DifferentialEvolution():
             self.convert_to_minimum = False
         else:
             self.convert_to_minimum = True
-
+        self.random_state = random_state
         self.score_metric = score_metric
         self.score_df = pd.DataFrame()
         self.categorical_values = OrderedDict()
 
-
     def create_lists(self, paramethers: Dict) -> Dict:
         """
-        Creates list of classes specified in pramethers.\n
-        intput: Parameters = { "a": [1, 2, 3]}\n
-        will give output: [a(1), a(2), a(3)]
-
-        :param paramethers: Keys can be given in two ways:
-            1. custom_name: [Class(param=1), Class(param=2)]
-            2. Class: {param: [1, 2]}
-        :param return_strings
-        :return: Dictionary with key name same as in paramethers.
-        Values are the list classes
+        Creates dict of classes' paramethers.\n
+        intput: Parameters = { "a": [type, min_bound, max_bound]}\n
         """
         ret_dict = {}
         for key in paramethers:
@@ -333,33 +389,40 @@ class DifferentialEvolution():
             args=(param_grid, X, y, cross_validations),
             popsize=popsize,
             maxiter = max_iters,
+            polish=False,
             workers = 1,
-            seed = 123,
+            seed = self.random_state,
         )
         print(results)
         return self.score_df
-
 
     def func(self, hyperparameters, param_grid, X, y, cross_validations):
         start_time = time.monotonic()
 
         scaler = param_grid['scalers'][0]
         pca, UMAP, logReg = self.create_objects_from_param_grid(hyperparameters,param_grid)
-
+        if pca.n_components < UMAP.n_components:
+            print("Drop")
+            return np.inf
         pca.random_state = 123
         UMAP.random_state = 123
         logReg.random_state = 123
         # print_with_border("Creating differential evolution")
 
-        X_scaled = scaler.fit_transform(X, y)
-        X_scaled_pca = pca.fit_transform(X_scaled, y)
-        X_scaled_pca_umap = UMAP.fit_transform(X_scaled_pca, y)
+        # X_scaled = scaler.fit_transform(X, y)
+        # X_scaled_pca = pca.fit_transform(X_scaled, y)
+        # X_scaled_pca_umap = UMAP.fit_transform(X_scaled_pca, y)
 
         # Splitting into train and test sets
-        X_train, X_test, y_train, y_test = train_test_split(X_scaled_pca_umap, y, test_size=0.3,
-                                                            random_state=123)
-
-        scores = cross_validate(logReg, X_scaled_pca_umap, y, cv=cross_validations, scoring = Scores.scores,
+        # X_train, X_test, y_train, y_test = train_test_split(X_scaled_pca_umap, y, test_size=0.3,
+        #                                                     random_state=123)
+        pipeline = Pipeline([
+            ("scaler", scaler),
+            ("pca", pca),
+            ("umap", UMAP),
+            ("logreg", logReg)
+        ])
+        scores = cross_validate(pipeline, X, y, cv=cross_validations, scoring = Scores.scores,
                                 return_train_score=False, return_estimator=False)
 
         iter_score = {
@@ -389,7 +452,7 @@ class DifferentialEvolution():
         print("evaluation: %d: %.2f\t| computation time: %s"%(self.evaluation_i, scr, str(timedelta(seconds=reg_time)).split('.', 2)[0]))
         time_left = (self.all_evaluations - self.evaluation_i) * reg_time_all / self.evaluation_i
         sys.stdout.write(f"\r %.2f %% done| Elapsed time: %s | Estimated time left: %s\n" % (
-            self.evaluation_i / self.all_evaluations * 100,
+            (self.evaluation_i-1) / self.all_evaluations * 100,
             str(timedelta(seconds=reg_time_all)).split('.', 2)[0],  # Split is used to remove ms
             str(timedelta(seconds=time_left)).split('.', 2)[0]  # Split is used to remove ms
         ))
@@ -397,7 +460,6 @@ class DifferentialEvolution():
 
         self.evaluation_i +=1
         return scr
-
 
     def create_objects_from_param_grid(self, hyperparameters, param_grid):
         ret_obj = []

@@ -8,7 +8,7 @@ from umap import UMAP
 import json
 from pathlib import Path
 from typing import List, Tuple, Dict
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, QuantileTransformer
 from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 from sklearn.metrics import log_loss, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.linear_model import LogisticRegression
@@ -41,7 +41,7 @@ ETAP III:   https://docs.google.com/document/d/1oJiQtZmKK2RHHHmcHS1ksXMz2Zn4dayV
 
 class KickstartedPredict():
     def __init__(self, data_folder_path: str, num_of_files_to_load: int = 1) -> None:
-
+        self.random_state = 123
         pd.options.display.max_columns = 9999
         self.data_folder_path: str = data_folder_path
         self.num_of_files_to_load: int = num_of_files_to_load
@@ -57,6 +57,9 @@ class KickstartedPredict():
         # self.SISO()
         # self.prepare_plotsPCA()
         self.hyper_paramether_tuning()
+        # with open(r"%s\Outputs\DIFF_EVO_12_06_2023_13_23_30.pickle" % (os.getcwd()), "rb") as output_file:
+        #     self.score_df = pickle.load(output_file)
+        #     print(self.score_df)
 
 
     def load_data(self) -> None:
@@ -143,45 +146,55 @@ class KickstartedPredict():
 
 
         # Example for CustomGridSearch
-        # params = OrderedDict({
-        #     "scalers": ["StandardScaler()"],
-        #     "PCA": {
-        #         "n_components": [5]
-        #     },
-        #     "UMAP": {
-        #         "n_components": [10]
-        #     },
-        #     "LogisticRegression": {
-        #         "class_weight": [None, 'balanced'],
-        #         # "C": [0.1, 1, 100, 1000]
-        #     }
-        # })
-        # searcher = CustomGridSearch()
-        # self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, kfold_on_all=False)
-        #
-        # return
+        params = OrderedDict({
+            "scalers": ["StandardScaler()", "QuantileTransformer()"],
+            "PCA": {
+                "n_components": [2,5, 10]
+            },
+            "UMAP": {
+                "n_components": [2],
+                "n_neighbors": [5, 10]
+            },
+            "LogisticRegression": {
+                "class_weight": [None, 'balanced'],
+                "C": [0.1, 1.0, 100, 1000]
+            }
+        })
+        searcher = CustomGridSearch(random_state = self.random_state)
+        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, cross_validations = 3, kfold_on_all=False)
+
+        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        with open(r"%s\Outputs\GRID_%s.pickle" % (os.getcwd(), date_string), "wb") as output_file:
+            pickle.dump(self.score, output_file)
+
+        return
+
         params = OrderedDict({
             "scalers": ["StandardScaler()"],
             "PCA": {
                 "n_components": ["int", 2, 10]
             },
             "UMAP": {
-                "n_components": ["int", 2, 10]
+                # "n_components": ["int", 2, 10]
+                "n_neighbors": ["int", 2, 5]
             },
-            "LogisticRegression": {
-                "class_weight": ["categorical", None, 'balanced'],
-                # "C": ["float", 1, 1000]
+            "LogisticRegressionCV": {
+                # "class_weight": ["categorical", None, 'balanced'],
+                "C": ["float", 0.1, 1000]
             }
         })
-        # date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        # print(date_string)
-        searcher = DifferentialEvolution(score_metric="f1")
-        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, popsize=1)
 
-        # file = open('/Outputs/DIFF_EVO_%s'%date_string, 'w')
-        # dump information to that file
-        # pickle.dump(self.score, file)
-        # file.close()
+        searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
+        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
+                                                     cross_validations=2,
+                                                     popsize=3,
+                                                     max_iters=1)
+        #Dump score to file
+        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pickle"%date_string)
+
+        # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
+        #     pickle.dump(self.score, output_file)
 
 
 
@@ -193,7 +206,6 @@ class KickstartedPredict():
 if __name__ == '__main__':
     predictor = KickstartedPredict(
         data_folder_path=r"C:\Users\kbklo\Desktop\Studia\_INFS2\CVaPR\Projekt\Data",
-        num_of_files_to_load=2,
-
+        num_of_files_to_load=20,
     )
     predictor.run()
