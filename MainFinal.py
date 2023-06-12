@@ -8,7 +8,7 @@ from umap import UMAP
 import json
 from pathlib import Path
 from typing import List, Tuple, Dict
-from sklearn.preprocessing import StandardScaler, MinMaxScaler, MaxAbsScaler, QuantileTransformer
+from sklearn.preprocessing import StandardScaler, Normalizer, MinMaxScaler, MaxAbsScaler, QuantileTransformer
 from sklearn.model_selection import train_test_split, cross_validate, StratifiedKFold
 from sklearn.metrics import log_loss, confusion_matrix, ConfusionMatrixDisplay
 from sklearn.linear_model import LogisticRegression
@@ -129,6 +129,9 @@ class KickstartedPredict():
         # print(self.df_prepared.isna().sum())  # two blurb_word_len is NaN
         self.df_prepared.blurb_word_len.fillna(0, inplace=True)
 
+
+
+
         print(self.df_prepared.columns)
         #
         # print("\nBefore get_dummies:")
@@ -137,16 +140,19 @@ class KickstartedPredict():
         # print("\nAfter get_dummies:")
         # print(self.df_prepared)
 
-    def hyper_paramether_tuning(self):
+    def hyper_paramether_tuning(self, normalize_data=True):
 
         print("init paramethers")
         y: pd.DataFrame = self.df_prepared['state']
         X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
 
+        if normalize_data:
+            for col in self.df_prepared.columns:
+                X_all = MinMaxScaler().fit_transform(X_all)
 
         # Example for CustomGridSearch
         params = OrderedDict({
-            "scalers": ["StandardScaler()", "QuantileTransformer()"],
+            "scalers": ["QuantileTransformer()"],
             "PCA": {
                 "n_components": [2]
             },
@@ -204,6 +210,6 @@ class KickstartedPredict():
 if __name__ == '__main__':
     predictor = KickstartedPredict(
         data_folder_path=r"C:\Users\kbklo\Desktop\Studia\_INFS2\CVaPR\Projekt\Data",
-        num_of_files_to_load=20,
+        num_of_files_to_load=2,
     )
     predictor.run()

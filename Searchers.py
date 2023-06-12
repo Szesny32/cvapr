@@ -251,14 +251,15 @@ class CustomGridSearch():
 
         for s_i, scaler in enumerate(scalers):
             X_scaled = scaler.fit_transform(X_train, y_train)
+            X_test_scaler = scaler.transform(X_test)
             for p_i, pca in enumerate(PCAs):
                 pca.random_state = self.random_state
                 X_scaled_pca = pca.fit_transform(X_scaled, y_train)
-
+                X_test_pca = pca.transform(X_test_scaler)
                 for u_i, UMAP in enumerate(UMAPs):
                     UMAP.random_state = self.random_state
                     X_scaled_pca_umap = UMAP.fit_transform(X_scaled_pca, y_train)
-                    X_test_umap = UMAP.transform(X_test)
+                    X_test_umap = UMAP.transform(X_test_pca)
                     for lr_i, logReg in enumerate(LogRegs):
                         logReg.random_state = 123
                         reg_time = time.monotonic() - start_time
