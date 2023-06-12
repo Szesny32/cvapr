@@ -56,10 +56,9 @@ class KickstartedPredict():
         # self.PCA()
         # self.SISO()
         # self.prepare_plotsPCA()
-        self.hyper_paramether_tuning()
-        # with open(r"%s\Outputs\DIFF_EVO_12_06_2023_13_23_30.pickle" % (os.getcwd()), "rb") as output_file:
-        #     self.score_df = pickle.load(output_file)
-        #     print(self.score_df)
+        # self.hyper_paramether_tuning()
+        self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\GRID_12_06_2023_16_45_22.pickle")
+        print(self.score_df)
 
 
     def load_data(self) -> None:
@@ -149,11 +148,11 @@ class KickstartedPredict():
         params = OrderedDict({
             "scalers": ["StandardScaler()", "QuantileTransformer()"],
             "PCA": {
-                "n_components": [2,5, 10]
+                "n_components": [2]
             },
             "UMAP": {
                 "n_components": [2],
-                "n_neighbors": [5, 10]
+                # "n_neighbors": [5, 10]
             },
             "LogisticRegression": {
                 "class_weight": [None, 'balanced'],
@@ -164,8 +163,7 @@ class KickstartedPredict():
         self.score: pd.DataFrame = searcher.evaluate(X_all, y, params, cross_validations = 3, kfold_on_all=False)
 
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        with open(r"%s\Outputs\GRID_%s.pickle" % (os.getcwd(), date_string), "wb") as output_file:
-            pickle.dump(self.score, output_file)
+        self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pkl"%date_string)
 
         return
 
@@ -191,7 +189,7 @@ class KickstartedPredict():
                                                      max_iters=1)
         #Dump score to file
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pickle"%date_string)
+        self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pkl"%date_string)
 
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
