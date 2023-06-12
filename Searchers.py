@@ -84,9 +84,9 @@ class CustomGridSearch():
 
     def evaluate(self, X, y, params: Dict, cross_validations = 3, max_iter = 1000, kfold_on_all = False) -> pd.DataFrame:
         if kfold_on_all:
-            self.evaluate_with_transformers_cv(X, y, params, cross_validations, max_iter)
+            return self.evaluate_with_transformers_cv(X, y, params, cross_validations, max_iter)
         else:
-            self.evaluate_without_transformers_cv(X, y, params, cross_validations, max_iter)
+            return self.evaluate_without_transformers_cv(X, y, params, cross_validations, max_iter)
 
     def evaluate_with_transformers_cv(self, X, y, params: Dict, cross_validations = 1, max_iter = 1000):
         start_time = time.monotonic()

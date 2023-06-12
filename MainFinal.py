@@ -18,7 +18,7 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import GridSearchCV
 
 from collections import OrderedDict
-import seaborn as sns
+# import seaborn as sns
 
 import Scores
 
@@ -56,9 +56,9 @@ class KickstartedPredict():
         # self.PCA()
         # self.SISO()
         # self.prepare_plotsPCA()
-        # self.hyper_paramether_tuning()
-        self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\GRID_12_06_2023_16_45_22.pickle")
-        print(self.score_df)
+        self.hyper_paramether_tuning()
+        # self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\GRID_12_06_2023_16_45_22.pickle")
+        # print(self.score_df)
 
 
     def load_data(self) -> None:
