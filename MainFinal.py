@@ -184,11 +184,11 @@ class KickstartedPredict():
             cross_validations=3,
             cross_validate_transformers=False,
             fit_transform_all_data=False,
-            transfomer_fit_y=False,
+            transfomer_fit_y=True,
         )
-
+        custom_identifier = "normalized_umap_test_ys_10files"
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        self.score.to_csv(".\Outputs\GRID_umap_%s.csv"%date_string, sep=";")
+        self.score.to_csv(".\Outputs\%s_GRID_%s.csv"%(custom_identifier, date_string), sep=";")
         return
 
         searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")

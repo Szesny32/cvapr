@@ -603,9 +603,9 @@ class CustomGridSearch():
                  ) -> pd.DataFrame:
 
         if cross_validate_transformers:
-            self.evaluate_with_transformers_cv(X, y, params, cross_validations, fit_transform_all_data, transfomer_fit_y)
+            return self.evaluate_with_transformers_cv(X, y, params, cross_validations, fit_transform_all_data, transfomer_fit_y)
         else:
-            self.evaluate_without_transformers_cv(X, y, params, cross_validations, fit_transform_all_data, transfomer_fit_y)
+            return self.evaluate_without_transformers_cv(X, y, params, cross_validations, fit_transform_all_data, transfomer_fit_y)
 
     def evaluate_with_transformers_cv(self, X, y, params: Dict, cross_validations, fit_transform_all_data, transfomer_fit_y):
         start_time = time.monotonic()
