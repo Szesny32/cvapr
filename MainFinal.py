@@ -57,14 +57,15 @@ class KickstartedPredict():
         # self.SISO()
         # self.prepare_plotsPCA
 
-        self.hyper_paramether_tuning()
+
+        # self.hyper_paramether_tuning()
 
         # y: pd.DataFrame = self.df_prepared['state']
         # X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
         # self.plot_umap_data_transform(X_all, y)
         # self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\DIFF_EVO_12_06_2023_20_21_44.pkl")
         # print(self.score_df)
-        # self.score_df = pd.read_csv(r".\Outputs\19BIC_grid_umap_fit_all_with_y.csv", sep = ";")
+        #
         # print(self.score_df.test_BIC.min())
 
 
@@ -184,9 +185,9 @@ class KickstartedPredict():
             cross_validations=3,
             cross_validate_transformers=False,
             fit_transform_all_data=False,
-            transfomer_fit_y=True,
+            transfomer_fit_y=False,
         )
-        custom_identifier = "normalized_umap_test_ys_10files"
+        custom_identifier = "normalized_umap_test_no_ys_10files"
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
         self.score.to_csv(".\Outputs\%s_GRID_%s.csv"%(custom_identifier, date_string), sep=";")
         return
@@ -231,52 +232,6 @@ class KickstartedPredict():
 
         print(cross_validate(LogisticRegression(random_state = self.random_state), u, y, scoring=Scores.scores, cv = 5))
         plt.show()
-
-    def prepare_plots(self,
-                      data: List[pd.DataFrame],
-                      desctiptions:List[str],
-                      params_to_plot,
-                      plot_n_best_from_groups = 5,
-                      ) -> None:
-        """
-        :param data: List[Dataframe] with scores
-        :param desctiptions: - Descriptions for legend
-        :param params_to_plot: List[str] or "all" with scores to plot.
-            Each score is plotted on different figure. Possible scores:
-            ["test_BIC", "test_sensitivity", "test_specificity",
-            "test_PPV", "test_NPV", "test_balanced_accuracy",
-             "test_f1"]
-        :param plot_n_best_from_groups: - number of rows from each group to plot
-        """
-        print("\nScore DataFrame columns: ")
-        print(self.score_df.columns)
-        if isinstance(params_to_plot, str):
-            if params_to_plot.lower() == "all":
-                params_to_plot = ["test_BIC", "test_sensitivity", "test_specificity",
-                                  "test_PPV", "test_NPV", "test_balanced_accuracy",
-                                  "test_f1"]
-
-        for param in params_to_plot:
-            asc_bool = False
-            if param == "test_BIC":
-                asc_bool = True
-
-            plt.figure(figsize=(16, 11))
-            self.score_df[param].sort_values(ascending=asc_bool).plot(kind="bar")
-            bar_x = self.score_df[param].sort_values(ascending=asc_bool).index
-            bar_y = self.score_df[param].loc[bar_x]
-            bar_err = self.score_df[param+"_std"].loc[bar_x]
-
-            if param != "test_BIC":
-                bar_err[(bar_y+bar_err)>1.0] = np.clip(bar_y+bar_err, 0.0, 1.0) - bar_y
-                bar_err[(bar_y-bar_err)<0.0] = np.clip(bar_y-bar_err, 0.0, 1.0) + bar_y
-
-            plt.errorbar(bar_x, bar_y, yerr=bar_err, fmt = 'o',color = 'black',
-            ecolor = 'black', elinewidth = 2, capsize=10, capthick = 2)
-            plt.title(param+" Balanced")
-            plt.tight_layout()
-            plt.show()
-
 
 
 
