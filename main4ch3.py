@@ -514,12 +514,16 @@ class KickstartedPredict():
         #print(self.score_df)
         # print(scores)
 
-    def prepare_plots(self) -> None:
+    def prepare_plots(self,
+                      params_to_plot
+                      ) -> None:
 
         print("\nScore DataFrame columns: ")
         print(self.score_df.columns)
+        if isinstance(params_to_plot, str):
+            if params_to_plot.lower() == "all":
+                params_to_plot = ["test_BIC", "test_sensitivity", "test_specificity", "test_PPV", "test_NPV", "test_balanced_accuracy", "test_f1"]
 
-        params_to_plot = ["test_BIC", "test_sensitivity", "test_specificity", "test_PPV", "test_NPV", "test_balanced_accuracy", "test_f1"]
         for param in params_to_plot:
             asc_bool = False
             if param == "test_BIC":

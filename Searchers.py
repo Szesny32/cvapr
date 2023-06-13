@@ -381,6 +381,7 @@ class DifferentialEvolution():
                  popsize=5,
                  cross_validate_transformers=False,
                  fit_transform_all_data=False,
+                 transfomer_fit_y=True,
                  threads=1) -> pd.DataFrame:
         param_grid = self.create_lists(params)
 
@@ -407,7 +408,8 @@ class DifferentialEvolution():
             self.func,
             boundries,
             args=(
-            param_grid, X, y, cross_validations, threads != 1, cross_validate_transformers, fit_transform_all_data),
+                param_grid, X, y, cross_validations, threads != 1,
+                cross_validate_transformers, fit_transform_all_data, transfomer_fit_y),
             popsize=popsize,
             maxiter=max_iters,
             polish=False,
@@ -419,7 +421,7 @@ class DifferentialEvolution():
         return self.score_df
 
     def func(self, hyperparameters, param_grid, X, y, cross_validations, multithread=False,
-             cross_validate_transformers=False, fit_transform_all_data=False):
+             cross_validate_transformers=False, fit_transform_all_data=False, transfomer_fit_y=True):
         start_time = time.monotonic()
 
         scaler = param_grid['scalers'][0]
@@ -438,7 +440,6 @@ class DifferentialEvolution():
 
         # Splitting into train and test sets
 
-
         if cross_validate_transformers:
             pipeline = Pipeline([
                 ("scaler", scaler),
@@ -451,13 +452,14 @@ class DifferentialEvolution():
         else:
             if fit_transform_all_data:
                 pipeline = Pipeline([
-                ("scaler", scaler),
-                ("pca", pca),
-                ("umap", UMAP),
+                    ("scaler", scaler),
+                    ("pca", pca),
+                    ("umap", UMAP),
                 ])
-
-                X_transformed = pipeline.fit_transform(X, y)
-
+                if transfomer_fit_y:
+                    X_transformed = pipeline.fit_transform(X, y)
+                else:
+                    X_transformed = pipeline.fit_transform(X)
                 scores = cross_validate(logReg, X, y, cv=cross_validations, scoring=Scores.scores,
                                         return_train_score=False, return_estimator=False)
             else:
@@ -469,12 +471,14 @@ class DifferentialEvolution():
 
                 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3,
                                                                     random_state=self.random_state)
+                if transfomer_fit_y:
+                    X_train_transformed = pipeline.fit_transform(X_train, y_train)
+                else:
+                    X_train_transformed = pipeline.fit_transform(X_train)
 
-                X_train_transformed = pipeline.fit_transform(X_train, y_train)
                 X_test_transformed = pipeline.transform(X_test)
-
+                logReg.fit(X_train_transformed, y_train)
                 scores = Scores.get_scores(logReg, X_test_transformed, y_test)
-
 
         iter_score = {
             "scaler": param_grid["scalers"][0],
@@ -501,7 +505,7 @@ class DifferentialEvolution():
         reg_time_all = time.monotonic() - self.evolution_start_time
         print(hyperparameters)
         print("evaluation: %d: %.2f\t| computation time: %s" % (
-        self.evaluation_i, scr, str(timedelta(seconds=reg_time)).split('.', 2)[0]))
+            self.evaluation_i, scr, str(timedelta(seconds=reg_time)).split('.', 2)[0]))
 
         if not multithread:
             time_left = (self.all_evaluations - self.evaluation_i) * reg_time_all / self.evaluation_i
