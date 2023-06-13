@@ -406,6 +406,7 @@ class DifferentialEvolution():
             polish=False,
             workers = -1,
             seed = self.random_state,
+            disp=True,
         )
         print(results)
         return self.score_df
@@ -436,8 +437,9 @@ class DifferentialEvolution():
             ("umap", UMAP),
             ("logreg", logReg)
         ])
-        scores = cross_validate(pipeline, X, y, cv=cross_validations, scoring = Scores.scores,
-                                return_train_score=False, return_estimator=False)
+        if cross_validations >1:
+            scores = cross_validate(pipeline, X, y, cv=cross_validations, scoring = Scores.scores,
+                                    return_train_score=False, return_estimator=False)
 
         iter_score = {
             "scaler": param_grid["scalers"][0],
@@ -465,7 +467,6 @@ class DifferentialEvolution():
         print(hyperparameters)
         print("evaluation: %d: %.2f\t| computation time: %s"%(self.evaluation_i, scr, str(timedelta(seconds=reg_time)).split('.', 2)[0]))
 
-        sys.stdout.flush()
         if not multithread:
             time_left = (self.all_evaluations - self.evaluation_i) * reg_time_all / self.evaluation_i
             sys.stdout.write(f"\r %.2f %% done| Elapsed time: %s | Estimated time left: %s\n" % (

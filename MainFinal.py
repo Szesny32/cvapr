@@ -156,49 +156,51 @@ class KickstartedPredict():
                 X_all = MinMaxScaler().fit_transform(X_all)
 
         # Example for CustomGridSearch
-        params = OrderedDict({
-            "scalers": ["QuantileTransformer()"],
-            "PCA": {
-                "n_components": [2, 10, 20, 40]
-            },
-            "UMAP": {
-                "n_components": [2, 5, 10],
-                "n_neighbors": [5, 20, 50],
-                "min_dist": [0.1, 0.5, 1.0]
-            },
-            "LogisticRegression": {
-                "class_weight": [None, 'balanced'],
-                "C": [0.1, 1.0, 100, 1000]
-            }
-        })
-        searcher = CustomGridSearch(random_state = self.random_state)
-        self.score: pd.DataFrame = searcher.evaluate_umap_transform_all_cv(X_all, y, params, cross_validations = 5)
-
-        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        self.score.to_csv(".\Outputs\GRID_umap_%s.csv"%date_string, sep=";")
-        self.score.to_pickle(".\Outputs\RID_umap_%s.pkl" % date_string)
-        return
 
         # params = OrderedDict({
-        #     "scalers": ["StandardScaler()"],
+        #     "scalers": ["StandardScaler()", "QuantileTransformer()"],
         #     "PCA": {
-        #         "n_components": ["int", 2, 10]
+        #         "n_components": [2, 10, 20, 30, 40]
         #     },
         #     "UMAP": {
-        #         # "n_components": ["int", 2, 10]
-        #         "n_neighbors": ["int", 2, 5]
+        #         "n_components": [2, 5, 10],
+        #         "n_neighbors": [5, 20, 50],
+        #         "min_dist": [0.01, 0.1, 0.5, 1.0]
         #     },
-        #     "LogisticRegressionCV": {
-        #         # "class_weight": ["categorical", None, 'balanced'],
-        #         "C": ["float", 0.1, 1000]
+        #     "LogisticRegression": {
+        #         "class_weight": [None, 'balanced'],
+        #         "C": [0.1, 1.0, 100, 1000]
         #     }
         # })
+        # searcher = CustomGridSearch(random_state = self.random_state)
+        # self.score: pd.DataFrame = searcher.evaluate_umap_transform_all_cv(X_all, y, params, cross_validations = 5)
         #
-        # searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
-        # self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
-        #                                              cross_validations=2,
-        #                                              popsize=3,
-        #                                              max_iters=1)
+        # date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        # self.score.to_csv(".\Outputs\GRID_umap_%s.csv"%date_string, sep=";")
+        # self.score.to_pickle(".\Outputs\RID_umap_%s.pkl" % date_string)
+        # return
+
+        params = OrderedDict({
+            "scalers": ["StandardScaler()"],
+            "PCA": {
+                "n_components": ["int", 2, 10]
+            },
+            "UMAP": {
+                # "n_components": ["int", 2, 10]
+                "n_neighbors": ["int", 2, 5]
+            },
+            "LogisticRegressionCV": {
+                # "class_weight": ["categorical", None, 'balanced'],
+                "C": ["float", 0.1, 1000]
+            }
+        })
+
+        searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
+        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
+                                                     cross_validations=2,
+                                                     popsize=3,
+                                                     max_iters=1,
+                                                     )
         # #Dump score to file
         # date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
         # self.score.to_pickle(".\Outputs\DIFF_EVO_%s.pkl"%date_string)
