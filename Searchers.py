@@ -493,7 +493,7 @@ class DifferentialEvolution():
             iter_score[score + "_std"] = 2 * k_val_arr.std()
         if not multithread:
             if self.score_df.empty:
-                score_df = pd.DataFrame(data=iter_score, index=[self.evaluation_i])
+                self.score_df = pd.DataFrame(data=iter_score, index=[self.evaluation_i])
             else:
                 self.score_df.loc[self.evaluation_i] = iter_score
 
