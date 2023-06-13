@@ -211,7 +211,7 @@ class CustomGridSearch():
                         logReg.max_iter = max_iter
                         logReg.random_state = self.random_state
 
-                        scores = cross_validate(logReg, X_scaled_pca_umap, y, cv = cross_validations)
+                        scores = cross_validate(logReg, X_scaled_pca_umap, y, cv = cross_validations, scoring=Scores.scores)
 
                         iter_score = {
                             "scaler": param_grid_strings[params_keys[0]][s_i],

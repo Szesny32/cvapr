@@ -157,14 +157,14 @@ class KickstartedPredict():
 
         # Example for CustomGridSearch
         params = OrderedDict({
-            "scalers": ["StandardScaler()", "QuantileTransformer()"],
+            "scalers": ["QuantileTransformer()"],
             "PCA": {
-                "n_components": [2, 10, 20, 30, 40]
+                "n_components": [2, 10, 20, 40]
             },
             "UMAP": {
                 "n_components": [2, 5, 10],
                 "n_neighbors": [5, 20, 50],
-                "min_dist": [0.01, 0.1, 0.5, 1.0]
+                "min_dist": [0.1, 0.5, 1.0]
             },
             "LogisticRegression": {
                 "class_weight": [None, 'balanced'],
@@ -237,7 +237,7 @@ class KickstartedPredict():
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     predictor = KickstartedPredict(
-        data_folder_path=r"C:\Users\kbklo\Desktop\Studia\_INFS2\CVaPR\Projekt\Data",
-        num_of_files_to_load=2,
+        data_folder_path=r"%s\Data"%os.getcwd(),
+        num_of_files_to_load=10,
     )
     predictor.run()
