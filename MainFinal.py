@@ -160,20 +160,21 @@ class KickstartedPredict():
         # Example for CustomGridSearch
 
         params = OrderedDict({
-            "scalers": ["StandardScaler()", "QuantileTransformer()"],
+            "scalers": ["QuantileTransformer()"],
             "PCA": {
                 "n_components": [2, 10, 20, 30, 40]
             },
             "UMAP": {
                 "n_components": [2, 5, 10],
                 "n_neighbors": [5, 20, 50],
-                "min_dist": [0.01, 0.1, 0.5, 1.0]
+                "min_dist": [0.5, 1.0]
             },
             "LogisticRegression": {
                 "class_weight": [None, 'balanced'],
                 "C": [0.1, 1.0, 100, 1000],
-                "solver": "saga",
-                "penalty": ['elasticnet', 'l1', 'l2', None]
+                "solver": ["saga"],
+                "penalty": ['elasticnet', 'l1', 'l2'],
+                "l1_ratio": [0.2, 0.5, 0.8],
             }
         })
         searcher = CustomGridSearch(random_state = self.random_state)
