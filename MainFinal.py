@@ -183,23 +183,25 @@ class KickstartedPredict():
         params = OrderedDict({
             "scalers": ["StandardScaler()"],
             "PCA": {
-                "n_components": ["int", 2, 10]
+                "n_components": ["int", 2, 10],
             },
             "UMAP": {
-                # "n_components": ["int", 2, 10]
-                "n_neighbors": ["int", 2, 5]
+                "n_components": ["int", 2, 10],
+                "n_neighbors": ["int", 2, 5],
             },
-            "LogisticRegressionCV": {
-                # "class_weight": ["categorical", None, 'balanced'],
-                "C": ["float", 0.1, 1000]
+            "LogisticRegression": {
+                "class_weight": ["categorical", None, 'balanced'],
+                # "C": ["float", 0.1, 1000]
             }
         })
 
         searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
         self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
-                                                     cross_validations=2,
+                                                     cross_validations=3,
                                                      popsize=3,
-                                                     max_iters=1,
+                                                     max_iters=2,
+                                                     cross_validate_transformers=False,
+                                                     fit_transform_all_data=True,
                                                      )
         # #Dump score to file
         # date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
