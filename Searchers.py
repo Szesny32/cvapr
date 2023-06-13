@@ -506,7 +506,7 @@ class DifferentialEvolution():
         print(hyperparameters)
         print("evaluation: %d: %.2f\t| computation time: %s" % (
             self.evaluation_i, scr, str(timedelta(seconds=reg_time)).split('.', 2)[0]))
-
+        print(self.score_df)
         if not multithread:
             time_left = (self.all_evaluations - self.evaluation_i) * reg_time_all / self.evaluation_i
             sys.stdout.write(f"\r %.2f %% done| Elapsed time: %s | Estimated time left: %s\n" % (

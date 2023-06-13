@@ -188,37 +188,21 @@ class KickstartedPredict():
 
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
         self.score.to_csv(".\Outputs\GRID_umap_%s.csv"%date_string, sep=";")
-        self.score.to_pickle(".\Outputs\RID_umap_%s.pkl" % date_string)
         return
 
-        # params = OrderedDict({
-        #     "scalers": ["StandardScaler()"],
-        #     "PCA": {
-        #         "n_components": ["int", 2, 40],
-        #     },
-        #     "UMAP": {
-        #         "n_components": ["int", 2, 10],
-        #         "n_neighbors": ["int", 2, 100],
-        #     },
-        #     "LogisticRegression": {
-        #         "class_weight": ["categorical", None, 'balanced'],
-        #         "C": ["float", 0.1, 1000]
-        #     }
-        # })
-        #
-        # searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
-        # self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
-        #                                              cross_validations=3,
-        #                                              popsize=3,
-        #                                              max_iters=5,
-        #                                              cross_validate_transformers=False,
-        #                                              fit_transform_all_data=True,
-        #                                              transfomer_fit_y = False,
-        #                                              )
-        # # #Dump score to file
-        # custom_identifier = "umap_all_no_ys_10files"
-        # date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        # self.score.to_pickle(".\Outputs\%s_DIFF_EVO_%s.pkl"%(custom_identifier, date_string))
+        searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
+        self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
+                                                     cross_validations=3,
+                                                     popsize=3,
+                                                     max_iters=5,
+                                                     cross_validate_transformers=False,
+                                                     fit_transform_all_data=True,
+                                                     transfomer_fit_y = False,
+                                                     )
+        # #Dump score to file
+        custom_identifier = "normalized_umap_test_no_ys_10files"
+        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        self.score.to_csv(".\Outputs\%s_DIFF_EVO_%s.csv"%(custom_identifier, date_string))
 
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
