@@ -53,6 +53,18 @@ class KickstartedPredict():
     def run(self) -> None:
         self.load_data()
         self.prepare_data()
+
+        pipe = Pipeline([
+            ("norm", MinMaxScaler()),
+            ("scaler", StandardScaler()),
+            ("pca", PCA(n_components=10)),
+            ("umap", UMAP())
+        ])
+
+        y: pd.DataFrame = self.df_prepared['state']
+        X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
+        self.plot_umap_data_transform(pipe, X_all, y)
+
         # self.PCA()
         # self.SISO()
         # self.prepare_plotsPCA
@@ -209,16 +221,12 @@ class KickstartedPredict():
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
 
-    def plot_umap_data_transform(self, X, y, n_neighbors=15, min_dist=0.1, n_components=3, metric='euclidean'):
+    def plot_umap_data_transform(self, pipeline, X, y):
         fig = plt.figure()
-        fit = UMAP(
-            n_neighbors=n_neighbors,
-            min_dist=min_dist,
-            n_components=n_components,
-            metric=metric,
-            random_state = self.random_state
-        )
-        u = fit.fit_transform(X, y)
+        u = pipeline.fit_transform(X, y)
+
+        # Access the n_components from the PCA step
+        n_components = pipeline.named_steps["umap"].n_components
 
         if n_components == 1:
             ax = fig.add_subplot(111)

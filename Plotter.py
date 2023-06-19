@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from typing import List, Tuple, Dict
-
+from matplotlib.lines import Line2D
 import addcopyfighandler # enables ctrl + c -> save matplotlib figure to clipboard
 
-plt.rcParams.update({'font.size': 20})
+
 
 class Plotter():
     """
@@ -20,7 +20,8 @@ class Plotter():
                  fig_size = (16, 11),
                  labels_from_cols = ("pca", "umap", "log"),
                  label_shortening_start = 7,
-                 label_shortening_amount = 6
+                 label_shortening_amount = 6,
+                 banned_label_params = ("solver")
                  ):
     
 
@@ -34,16 +35,31 @@ class Plotter():
         self.labels_from_cols = labels_from_cols
         self.label_shortening_start = label_shortening_start
         self.label_shortening_amount = label_shortening_amount
+        self.custom_labels = []
+        self.titles = []
+        self.banned_label_params = banned_label_params
 
 
-    def add_score_file(self, csv_file, title = None, sep = ";"):
+    def add_score_file(self, csv_file, title, sep = ";", custom_labels=None):
         """
-        Add .csv file with hyperparamether tuning data.
+        Add .csv file with hyperparamether tuning data. This data is used in plot_scores() method.
         :param csv_file: filepath of .csv file.
-        :param title: title to show in legend.
+        :param title: str title to show in legend.
         :param sep: separator in .csv file.
+        :param custom_labels: (row0_label, row1_label, ...) with size == csv_file's rows
         """
         new_score_df = pd.read_csv(csv_file, sep = sep)
+        if title != None:
+            self.titles.append(title)
+        if custom_labels != None:
+            if isinstance(custom_labels, str):
+                custom_labels = [custom_labels]
+
+            if len(custom_labels) != len(new_score_df):
+                raise Exception("custom_labels count %s")
+
+            self.custom_labels = list(custom_labels)
+
         self.score_data.append(new_score_df)
 
     def get_best_by_score(self, data_frame, amount, score = "BIC") -> pd.DataFrame:
@@ -65,9 +81,14 @@ class Plotter():
             # Check paramethers
             for w_i, par in enumerate(l_split[1:-2]):
                 e_split = par.split("=")
-                if len(e_split[0]) > self.label_shortening_start:
-                    # print("shorten: %s to %s" %(e_split[0], e_split[0][:label_shortening_amount]))
-                    e_split[0] = e_split[0][:self.label_shortening_amount]+"."
+                if e_split[0] in self.banned_label_params:
+                    e_split.pop(0)
+                    e_split.pop(0)
+                else:
+                    if len(e_split[0]) > self.label_shortening_start:
+                        # print("shorten: %s to %s" %(e_split[0], e_split[0][:label_shortening_amount]))
+                        e_split[0] = e_split[0][:self.label_shortening_amount]+"."
+
                 l_split[w_i+1] = "=".join(e_split, )
 
             #fix parenthesis
@@ -99,9 +120,18 @@ class Plotter():
             for j in range(len(self.labels_from_cols)):
                 j*=len(data_frame)
                 ret_arr[i] += temp[i+j]+"\n"
-
+        
         return ret_arr
 
+
+    def create_legend(self):
+        lines = []
+        for i, title in enumerate(self.titles):
+            # Define custom proxy artists
+            line = Line2D([0], [0], color=self.colors[i], linewidth=8)
+            lines.append(line)
+
+        plt.legend(lines, self.titles)
 
     def plot_scores(self,
                     params_to_plot = ("test_BIC"),
@@ -118,6 +148,8 @@ class Plotter():
              "test_f1"]
         :param plot_n_best_from_files: - number of rows from each file to plot
         """
+
+
 
 
         print("\nScore DataFrame columns: ")
@@ -162,6 +194,7 @@ class Plotter():
                          ecolor='black', elinewidth=2, capsize=10, capthick=2)
             ax.set_xticklabels(labels)
             ax.set_title(param)
+            self.create_legend()
             plt.tight_layout()
             plt.show()
 
@@ -169,9 +202,24 @@ class Plotter():
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     output_folder = r"%s\Outputs"%os.getcwd()
+    plt.rcParams.update({'font.size': 16})
+
+
     plotter = Plotter(
-        fig_size=(16, 16) #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
+        fig_size=(16, 16), #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
+        labels_from_cols=("pca", "umap", ), #"log"
+        label_shortening_start=7,
+        label_shortening_amount=6,
+        banned_label_params=("solver")
+
     )
-    plotter.add_score_file(output_folder+r"\19BIC_grid_umap_fit_all_with_y.csv", "1")
-    plotter.add_score_file(output_folder+r"\19BIC_grid_umap_fit_all_with_y.csv", "2")
-    plotter.plot_scores()
+    # plotter.add_score_file(output_folder+r"\19BIC_grid_umap_fit_all_with_y.csv", "1")
+    plotter.add_score_file(output_folder+r"\normalized_umap_test_ys_10files_GRID_13_06_2023_21_38_04.csv",
+                           "UMAP fit train with ys")
+    plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_13_06_2023_22_34_13.csv",
+                           "UMAP fit train without ys")
+
+    plotter.plot_scores(
+        params_to_plot="all",
+        plot_n_best_from_files=10
+    )
