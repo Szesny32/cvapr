@@ -16,10 +16,11 @@ from sklearn.metrics import classification_report
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA
 from sklearn.model_selection import GridSearchCV
-
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
 from collections import OrderedDict
 # import seaborn as sns
-
+from Plotter import *
 import Scores
 
 from Searchers import *
@@ -51,30 +52,26 @@ class KickstartedPredict():
         self.load_data()
         self.prepare_data()
 
-        # pipe = Pipeline([
-        #     ("norm", MinMaxScaler()),
-        #     ("scaler", StandardScaler()),
-        #     ("pca", PCA(n_components=10)),
-        #     ("umap", UMAP())
-        # ])
-        #
-        # y: pd.DataFrame = self.df_prepared['state']
-        # X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
-        # self.plot_umap_data_transform(pipe, X_all, y)
+        pipe = Pipeline([
+            ("norm", MinMaxScaler()),
+            ("scaler", QuantileTransformer()),
+            ("pca", PCA(n_components=10)),
+            ("umap", UMAP(n_components=2, n_neighbors=10, min_dist=0.5)),
+            ("clf", LogisticRegression(C = 0.1, penalty="l1", solver="saga")),
+            # ("clf", SVC())
+        ])
 
-        # self.PCA()
-        # self.SISO()
-        # self.prepare_plotsPCA
+        y: pd.DataFrame = self.df_prepared['state']
+        X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
 
-        self.hyper_paramether_tuning()
+        plot_learning_curve(pipe, X_all, y, n_splits=5)
+        # self.plot_umap_data_transform(pipe, X_all, y, fit_all=False)
 
-        # y: pd.DataFrame = self.df_prepared['state']
-        # X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
-        # self.plot_umap_data_transform(X_all, y)
-        # self.score_df = pd.read_pickle(r"C:\Users\kbklo\Documents\GitHub\cvapr\Outputs\DIFF_EVO_12_06_2023_20_21_44.pkl")
-        # print(self.score_df)
-        #
-        # print(self.score_df.test_BIC.min())
+        #LearningCurve
+
+
+        # self.hyper_paramether_tuning()
+
 
     def load_data(self) -> None:
         """Load data to self.df dataframe. Param use_columns==None means all columns are used."""
@@ -228,50 +225,13 @@ class KickstartedPredict():
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
 
-    def plot_umap_data_transform(self, pipeline, X, y):
-        fig = plt.figure()
-        u = pipeline.fit_transform(X, y)
 
-        # Access the n_components from the PCA step
-        n_components = pipeline.named_steps["umap"].n_components
-        colors = np.array(["darkred"] * len(y[y == 0]))
-        colors = np.concatenate((colors, ["darkgreen"] * len(y[y == 1])), axis=0)
-        if n_components == 1:
-            ax = fig.add_subplot(111)
-            ax.scatter(u[:, 0], range(len(u)), c=colors, alpha=0.01)
-        if n_components == 2:
-            ax = fig.add_subplot(111)
-            ax.scatter(u[:, 0], u[:, 1], c=colors, alpha=0.01)
-        if n_components == 3:
-            ax = fig.add_subplot(111, projection='3d', c=colors, alpha=0.01)
-            ax.scatter(u[:, 0], u[:, 1], u[:, 2], s=100)
-
-        scores = cross_validate(LogisticRegression(random_state=self.random_state), u, y, scoring=Scores.scores, cv=5)
-        # Calculate mean from k-validations
-
-        iter_score = {
-            "scaler": pipeline.named_steps["scaler"],
-            "scaler_object": pipeline.named_steps["scaler"],
-            "pca": pipeline.named_steps["pca"],
-            "pca_object": pipeline.named_steps["pca"],
-            "umap": pipeline.named_steps["umap"],
-            "umap_object": pipeline.named_steps["umap"],
-            "log": LogisticRegression(),
-            "log_object": LogisticRegression(),
-        }
-
-        for score, k_val_arr in scores.items():
-            iter_score[score] = k_val_arr.mean()
-            iter_score[score + "_std"] = 2 * k_val_arr.std()
-        score_df = pd.DataFrame(data=iter_score, index=[0])
-        print(score_df)
-        plt.show()
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     predictor = KickstartedPredict(
         data_folder_path=r"%s\Data" % os.getcwd(),
-        num_of_files_to_load=10,
+        num_of_files_to_load=2,
     )
     predictor.run()
