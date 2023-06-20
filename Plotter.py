@@ -183,24 +183,79 @@ class Plotter():
                 combined = pd.concat([combined, d], ignore_index= True)
                 colors = np.concatenate((colors, [self.colors[color_i]]*len(d)), axis = 0)
                 color_i += 1
+
             print(asc_bool)
             bar_x = combined[param].sort_values(ascending=asc_bool).index
             ax = combined[param].sort_values(ascending=asc_bool).plot(kind="bar", color=colors[bar_x])
             bar_y = combined[param].loc[bar_x]
             bar_err = combined[param + "_std"].loc[bar_x]
-            print(bar_err)
+
             if param != "test_BIC":
                 bar_err[(bar_y + bar_err) > 1.0] = np.clip(bar_y + bar_err, 0.0, 1.0) - bar_y
                 bar_err[(bar_y - bar_err) < 0.0] = np.clip(bar_y - bar_err, 0.0, 1.0) + bar_y
-
-            ax.errorbar(bar_x, bar_y, yerr=bar_err, fmt='o', color='black',
+            print(bar_err)
+            print(bar_y)
+            ax.errorbar(np.arange(0, len(bar_x)), bar_y, yerr=bar_err, fmt='o', color='black',
                          ecolor='black', elinewidth=2, capsize=10, capthick=2)
-            ax.set_xticklabels(labels)
+            ax.bar_label(ax.containers[0], fmt="%.3f", label_type="center")
+            ax.set_xticklabels(labels[bar_x])
             ax.set_title(param)
             self.create_legend()
             plt.tight_layout()
             plt.show()
 
+    def combine_dfs(self, save_to_file: str = "", columns_to_add: Dict = None) -> pd.DataFrame:
+        def split_params(label) -> List[List]:
+            label = label.replace("(", ",")
+            label = label.replace(")", ",")
+            l_split = label.split(",")
+
+            # Check paramethers
+            ret_arr_names = []
+            ret_arr_values = []
+            for w_i, par in enumerate(l_split[1:-2]):
+                e_split = par.split("=")
+                if e_split[1].isnumeric():
+                    e_split[1] = float(e_split[1])
+
+                ret_arr_names.append(l_split[0]+"__"+e_split[0])
+                ret_arr_values.append(e_split[1])
+
+            return ret_arr_names, ret_arr_values
+
+        print(self.score_data[0].columns)
+        combined = pd.DataFrame()
+        params_df_combined_col = pd.DataFrame()
+        params_df_combined = pd.DataFrame()
+        for d_i, df in enumerate(self.score_data):
+            #Add new columns
+            if columns_to_add != None:
+                for col in columns_to_add.keys():
+                    self.score_data[d_i][col] = [columns_to_add[col][d_i]]*len(self.score_data[d_i])
+
+            # Split params to columns
+            params_dict = {}
+            for obj_col in ["pca", "umap", "log"]:
+                for row in self.score_data[d_i][obj_col].index:
+                    names, values = split_params(self.score_data[d_i][obj_col].loc[row])
+                    # print(values)
+                    for n_i, n in enumerate(names):
+                        if params_dict.get(n, None) != None:
+                            params_dict[n].append(values[n_i])
+                        else:
+                            params_dict[n] = []
+                    # for param in params_dict:
+                    #     if not param in names:
+                    #         params_dict[param].append(np.nan)
+            params_df = pd.DataFrame(params_dict)
+            combined = pd.concat([combined, df], ignore_index=True)
+            # params_df_combined_col = pd.concat([params_df_combined_col, params_df],  axis=1)
+            params_df_combined = pd.concat([params_df_combined, params_df], ignore_index=True)
+
+        combined = pd.concat([combined, params_df_combined], axis = 1)
+        if save_to_file != "":
+            combined.to_csv(save_to_file, sep = ";")
+        return combined
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -215,7 +270,6 @@ if __name__ == '__main__':
         label_shortening_start=7,
         label_shortening_amount=6,
         banned_label_params=("solver")
-
     )
     # plotter.add_score_file(output_folder+r"\19BIC_grid_umap_fit_all_with_y.csv", "1")
     plotter.add_score_file(output_folder+r"\normalized_umap_test_ys_10files_GRID_13_06_2023_21_38_04.csv",
@@ -224,8 +278,18 @@ if __name__ == '__main__':
                            "UMAP fit train without ys")
     plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_19_06_2023_21_37_17.csv",
                            "UMAP fit train without ys")
+    plotter.add_score_file(output_folder + r"\19BIC_grid_umap_fit_all_with_y.csv",
+                           "UMAP fit all with ys")
 
-    plotter.plot_scores(
-        params_to_plot="all",
-        plot_n_best_from_files=[5, 2, 3],
+    # plotter.plot_scores(
+    #     params_to_plot="all",
+    #     plot_n_best_from_files=[1, 1, 1, 1],
+    # )
+
+    plotter.combine_dfs(
+        save_to_file= output_folder+r"\combined_data.csv",
+        columns_to_add={
+            "umap_fit_y": [True, False, False, True],
+            "umap_transform_all": [False, False, False, True]
+        }
     )
