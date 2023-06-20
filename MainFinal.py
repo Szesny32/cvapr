@@ -55,8 +55,8 @@ class KickstartedPredict():
         pipe = Pipeline([
             ("norm", MinMaxScaler()),
             ("scaler", QuantileTransformer()),
-            ("pca", PCA(n_components=10)),
-            ("umap", UMAP(n_components=2, n_neighbors=10, min_dist=0.5)),
+            ("pca", PCA(n_components=40)),
+            ("umap", UMAP(n_components=10, n_neighbors=50, min_dist=0.5)),
             ("clf", LogisticRegression(C = 0.1, penalty="l1", solver="saga")),
             # ("clf", SVC())
         ])
@@ -64,8 +64,8 @@ class KickstartedPredict():
         y: pd.DataFrame = self.df_prepared['state']
         X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
 
-        plot_learning_curve(pipe, X_all, y, n_splits=5)
-        # self.plot_umap_data_transform(pipe, X_all, y, fit_all=False)
+        # plot_learning_curve(pipe, X_all, y, n_splits=5)
+        plot_umap_data_transform(pipe, X_all, y, fit_all=False, save_to_file=True)
 
         #LearningCurve
 
@@ -232,6 +232,6 @@ class KickstartedPredict():
 if __name__ == '__main__':
     predictor = KickstartedPredict(
         data_folder_path=r"%s\Data" % os.getcwd(),
-        num_of_files_to_load=2,
+        num_of_files_to_load=10,
     )
     predictor.run()
