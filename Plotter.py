@@ -135,7 +135,7 @@ class Plotter():
 
     def plot_scores(self,
                     params_to_plot = ("test_BIC"),
-                    plot_n_best_from_files = 5,
+                    plot_n_best_from_files: int | List[int] = 5,
                     ):
         """
         Plots bar plot containing comparison of scoring paramethers from different classifications.
@@ -146,11 +146,9 @@ class Plotter():
             ["test_BIC", "test_sensitivity", "test_specificity",
             "test_PPV", "test_NPV", "test_balanced_accuracy",
              "test_f1"]
-        :param plot_n_best_from_files: - number of rows from each file to plot
+        :param plot_n_best_from_files: - number of rows from each file to plot. Alternative
+        Tuple of number of rows. size of tuple must be equal to the num of files.
         """
-
-
-
 
         print("\nScore DataFrame columns: ")
         print(self.score_data[0].columns)
@@ -173,19 +171,24 @@ class Plotter():
             labels = np.array([])
             colors = np.array([])
             color_i = 0
-            for d in self.score_data:
-                d = self.get_best_by_score(d, plot_n_best_from_files, score="test_BIC")
+            for d_i, d in enumerate(self.score_data):
+
+                if isinstance(plot_n_best_from_files, List):
+                    d = self.get_best_by_score(d, plot_n_best_from_files[d_i], score="test_BIC")
+                elif isinstance(plot_n_best_from_files, int):
+                    d = self.get_best_by_score(d, plot_n_best_from_files, score="test_BIC")
+
                 created_labels = self.create_labels(d)
                 labels = np.concatenate((labels, created_labels), axis = 0)
                 combined = pd.concat([combined, d], ignore_index= True)
                 colors = np.concatenate((colors, [self.colors[color_i]]*len(d)), axis = 0)
                 color_i += 1
-
+            print(asc_bool)
             bar_x = combined[param].sort_values(ascending=asc_bool).index
             ax = combined[param].sort_values(ascending=asc_bool).plot(kind="bar", color=colors[bar_x])
             bar_y = combined[param].loc[bar_x]
             bar_err = combined[param + "_std"].loc[bar_x]
-
+            print(bar_err)
             if param != "test_BIC":
                 bar_err[(bar_y + bar_err) > 1.0] = np.clip(bar_y + bar_err, 0.0, 1.0) - bar_y
                 bar_err[(bar_y - bar_err) < 0.0] = np.clip(bar_y - bar_err, 0.0, 1.0) + bar_y
@@ -207,7 +210,8 @@ if __name__ == '__main__':
 
     plotter = Plotter(
         fig_size=(16, 16), #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
-        labels_from_cols=("pca", "umap", ), #"log"
+        # fig_size=(16, 8), #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
+        labels_from_cols=("pca", "umap", "log"), #"log"
         label_shortening_start=7,
         label_shortening_amount=6,
         banned_label_params=("solver")
@@ -218,8 +222,10 @@ if __name__ == '__main__':
                            "UMAP fit train with ys")
     plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_13_06_2023_22_34_13.csv",
                            "UMAP fit train without ys")
+    plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_19_06_2023_21_37_17.csv",
+                           "UMAP fit train without ys")
 
     plotter.plot_scores(
         params_to_plot="all",
-        plot_n_best_from_files=10
+        plot_n_best_from_files=[5, 2, 3],
     )

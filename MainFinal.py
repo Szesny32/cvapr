@@ -22,9 +22,7 @@ from collections import OrderedDict
 
 import Scores
 
-
 from Searchers import *
-
 
 # import addcopyfighandler # enables ctrl + c -> save matplotlib figure to clipboard
 
@@ -34,7 +32,6 @@ ETAP I:     https://docs.google.com/document/d/13UgWdYbAnr3SVn1Ssj6Y_KiKmPix4tuc
 ETAP II:    https://docs.google.com/document/d/1yyEoZOCA6FFDqls-rtYKk19PXqpdUIFHM7cWjWJgR18/edit?usp=sharing
 ETAP III:   https://docs.google.com/document/d/1oJiQtZmKK2RHHHmcHS1ksXMz2Zn4dayVmIStPRM2MtU/edit?usp=sharing
 """
-
 
 
 # plt.style.use('seaborn')
@@ -54,23 +51,22 @@ class KickstartedPredict():
         self.load_data()
         self.prepare_data()
 
-        pipe = Pipeline([
-            ("norm", MinMaxScaler()),
-            ("scaler", StandardScaler()),
-            ("pca", PCA(n_components=10)),
-            ("umap", UMAP())
-        ])
-
-        y: pd.DataFrame = self.df_prepared['state']
-        X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
-        self.plot_umap_data_transform(pipe, X_all, y)
+        # pipe = Pipeline([
+        #     ("norm", MinMaxScaler()),
+        #     ("scaler", StandardScaler()),
+        #     ("pca", PCA(n_components=10)),
+        #     ("umap", UMAP())
+        # ])
+        #
+        # y: pd.DataFrame = self.df_prepared['state']
+        # X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
+        # self.plot_umap_data_transform(pipe, X_all, y)
 
         # self.PCA()
         # self.SISO()
         # self.prepare_plotsPCA
 
-
-        # self.hyper_paramether_tuning()
+        self.hyper_paramether_tuning()
 
         # y: pd.DataFrame = self.df_prepared['state']
         # X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
@@ -79,7 +75,6 @@ class KickstartedPredict():
         # print(self.score_df)
         #
         # print(self.score_df.test_BIC.min())
-
 
     def load_data(self) -> None:
         """Load data to self.df dataframe. Param use_columns==None means all columns are used."""
@@ -149,9 +144,6 @@ class KickstartedPredict():
         # print(self.df_prepared.isna().sum())  # two blurb_word_len is NaN
         self.df_prepared.blurb_word_len.fillna(0, inplace=True)
 
-
-
-
         print(self.df_prepared.columns)
         #
         # print("\nBefore get_dummies:")
@@ -175,12 +167,12 @@ class KickstartedPredict():
         params = OrderedDict({
             "scalers": ["QuantileTransformer()"],
             "PCA": {
-                "n_components": [2, 10, 20, 30, 40]
+                "n_components": [15]
             },
             "UMAP": {
-                "n_components": [2, 5, 10],
-                "n_neighbors": [5, 20, 50],
-                "min_dist": [0.5, 1.0]
+                "n_components": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "n_neighbors": [20, 50, 100],
+                "min_dist": [0.5, 0.75, 1.0]
             },
             "LogisticRegression": {
                 "class_weight": [None, 'balanced'],
@@ -190,33 +182,48 @@ class KickstartedPredict():
                 "l1_ratio": [0.2, 0.5, 0.8],
             }
         })
-        searcher = CustomGridSearch(random_state = self.random_state)
+        searcher = CustomGridSearch(random_state=self.random_state)
         self.score: pd.DataFrame = searcher.evaluate(
             X_all, y,
             params,
             cross_validations=3,
             cross_validate_transformers=False,
             fit_transform_all_data=False,
-            transfomer_fit_y=False,
+            transfomer_fit_y=True,
         )
-        custom_identifier = "normalized_umap_test_no_ys_10files"
+        custom_identifier = "normalized_umap_test_ys_10files"
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        self.score.to_csv(".\Outputs\%s_GRID_%s.csv"%(custom_identifier, date_string), sep=";")
+        self.score.to_csv(".\Outputs\%s_GRID_%s.csv" % (custom_identifier, date_string), sep=";")
         return
 
-        searcher = DifferentialEvolution(random_state = self.random_state, score_metric="BIC")
+        params = OrderedDict({
+            "scalers": ["StandardScaler()"],
+            "PCA": {
+                "n_components": ["int", 2, 40]
+            },
+            "UMAP": {
+                "n_components": ["int", 2, 20],
+                "n_neighbors": ["int", 10, 300],
+                "min_dist": ["float", 0.1, 1.0]
+            },
+            "LogisticRegression": {
+                "C": ["float", 0.1, 1000],
+                # "penalty": ["categorical", 'l1', 'l2'],
+            }
+        })
+        searcher = DifferentialEvolution(random_state=self.random_state, score_metric="BIC")
         self.score: pd.DataFrame = searcher.evaluate(X_all, y, params,
-                                                     cross_validations=3,
-                                                     popsize=3,
+                                                     cross_validations=2,
+                                                     popsize=5,
                                                      max_iters=5,
                                                      cross_validate_transformers=False,
-                                                     fit_transform_all_data=True,
-                                                     transfomer_fit_y = False,
+                                                     fit_transform_all_data=False,
+                                                     transfomer_fit_y=True,
                                                      )
         # #Dump score to file
         custom_identifier = "normalized_umap_test_no_ys_10files"
         date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-        self.score.to_csv(".\Outputs\%s_DIFF_EVO_%s.csv"%(custom_identifier, date_string))
+        self.score.to_csv(".\Outputs\%s_DIFF_EVO_%s.csv" % (custom_identifier, date_string))
 
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
@@ -227,26 +234,44 @@ class KickstartedPredict():
 
         # Access the n_components from the PCA step
         n_components = pipeline.named_steps["umap"].n_components
-
+        colors = np.array(["darkred"] * len(y[y == 0]))
+        colors = np.concatenate((colors, ["darkgreen"] * len(y[y == 1])), axis=0)
         if n_components == 1:
             ax = fig.add_subplot(111)
-            ax.scatter(u[:, 0], range(len(u)))
+            ax.scatter(u[:, 0], range(len(u)), c=colors, alpha=0.01)
         if n_components == 2:
             ax = fig.add_subplot(111)
-            ax.scatter(u[:, 0], u[:, 1])
+            ax.scatter(u[:, 0], u[:, 1], c=colors, alpha=0.01)
         if n_components == 3:
-            ax = fig.add_subplot(111, projection='3d')
+            ax = fig.add_subplot(111, projection='3d', c=colors, alpha=0.01)
             ax.scatter(u[:, 0], u[:, 1], u[:, 2], s=100)
 
-        print(cross_validate(LogisticRegression(random_state = self.random_state), u, y, scoring=Scores.scores, cv = 5))
-        plt.show()
+        scores = cross_validate(LogisticRegression(random_state=self.random_state), u, y, scoring=Scores.scores, cv=5)
+        # Calculate mean from k-validations
 
+        iter_score = {
+            "scaler": pipeline.named_steps["scaler"],
+            "scaler_object": pipeline.named_steps["scaler"],
+            "pca": pipeline.named_steps["pca"],
+            "pca_object": pipeline.named_steps["pca"],
+            "umap": pipeline.named_steps["umap"],
+            "umap_object": pipeline.named_steps["umap"],
+            "log": LogisticRegression(),
+            "log_object": LogisticRegression(),
+        }
+
+        for score, k_val_arr in scores.items():
+            iter_score[score] = k_val_arr.mean()
+            iter_score[score + "_std"] = 2 * k_val_arr.std()
+        score_df = pd.DataFrame(data=iter_score, index=[0])
+        print(score_df)
+        plt.show()
 
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     predictor = KickstartedPredict(
-        data_folder_path=r"%s\Data"%os.getcwd(),
+        data_folder_path=r"%s\Data" % os.getcwd(),
         num_of_files_to_load=10,
     )
     predictor.run()
