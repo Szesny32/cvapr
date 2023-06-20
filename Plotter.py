@@ -38,6 +38,7 @@ class Plotter():
         self.custom_labels = []
         self.titles = []
         self.banned_label_params = banned_label_params
+        self.csv_files =[]
 
 
     def add_score_file(self, csv_file, title, sep = ";", custom_labels=None):
@@ -48,6 +49,7 @@ class Plotter():
         :param sep: separator in .csv file.
         :param custom_labels: (row0_label, row1_label, ...) with size == csv_file's rows
         """
+        self.csv_files.append(csv_file)
         new_score_df = pd.read_csv(csv_file, sep = sep)
         if title != None:
             self.titles.append(title)
@@ -229,8 +231,12 @@ class Plotter():
         params_df_combined = pd.DataFrame()
         for d_i, df in enumerate(self.score_data):
             #Add new columns
+            self.score_data[d_i]["file"] = [self.csv_files[d_i]]*len(self.score_data[d_i])
             if columns_to_add != None:
                 for col in columns_to_add.keys():
+                    if len(columns_to_add[col]) != len(self.score_data):
+                        raise Exception("columns_to_add size does not match num of files!")
+
                     self.score_data[d_i][col] = [columns_to_add[col][d_i]]*len(self.score_data[d_i])
 
             # Split params to columns
@@ -277,9 +283,11 @@ if __name__ == '__main__':
     plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_13_06_2023_22_34_13.csv",
                            "UMAP fit train without ys")
     plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_19_06_2023_21_37_17.csv",
-                           "UMAP fit train without ys")
+                           "UMAP fit train without ys2")
     plotter.add_score_file(output_folder + r"\19BIC_grid_umap_fit_all_with_y.csv",
                            "UMAP fit all with ys")
+    plotter.add_score_file(output_folder + r"\normalized_umap_test_ys_10files_GRID_20_06_2023_12_37_24.csv",
+                           "UMAP fit all with ys2")
 
     # plotter.plot_scores(
     #     params_to_plot="all",
@@ -289,7 +297,7 @@ if __name__ == '__main__':
     plotter.combine_dfs(
         save_to_file= output_folder+r"\combined_data.csv",
         columns_to_add={
-            "umap_fit_y": [True, False, False, True],
-            "umap_transform_all": [False, False, False, True]
+            "umap_fit_y": [True, False, False, True, True],
+            "umap_transform_all": [False, False, False, True, True]
         }
     )
