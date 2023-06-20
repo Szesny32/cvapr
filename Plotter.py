@@ -1,3 +1,6 @@
+import datetime
+import time
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -5,7 +8,9 @@ import os
 from typing import List, Tuple, Dict
 from matplotlib.lines import Line2D
 import addcopyfighandler # enables ctrl + c -> save matplotlib figure to clipboard
+from sklearn.model_selection import cross_validate, train_test_split
 
+import Scores
 
 
 class Plotter():
@@ -263,11 +268,184 @@ class Plotter():
             combined.to_csv(save_to_file, sep = ";")
         return combined
 
+def scatter_hist(x, y, colors: List[str], ax, ax_histx, ax_histy):
+    colors = np.array(colors)
+    # no labels
+    ax_histx.tick_params(axis="x", labelbottom=False)
+    ax_histy.tick_params(axis="y", labelleft=False)
+
+    # the scatter plot:
+    ax.scatter(x, y, c = colors, alpha = 0.2)
+
+    # now determine nice limits by hand:
+    binwidth = 0.25
+    xymax = max(np.max(np.abs(x)), np.max(np.abs(y)))
+    lim = (int(xymax/binwidth) + 1) * binwidth
+
+    bins = np.arange(-lim, lim + binwidth, binwidth)
+    for c in np.unique(colors):
+        x_c = x[colors==c]
+        y_c = y[colors==c]
+        ax_histx.hist(x_c, bins=bins, color=c, alpha=0.4,  linewidth=0.5, edgecolor="black")
+        ax_histy.hist(y_c, bins=bins, color=c, orientation='horizontal',alpha=0.4, linewidth=0.5, edgecolor="black")
+
+def plot_learning_curve(pipeline, X, y, n_splits = 2, save_to_file = True):
+    start_time = time.monotonic()
+    X = np.array(X)
+    y = np.array(y)
+    print(X.shape)
+    splits = np.linspace(0, len(X), n_splits+1, dtype=int)
+    score_df = pd.DataFrame()
+    for s_i, split in enumerate(splits[1:]):
+        # print(X[:split, :].shape)
+        # Splitting into train and test sets
+
+        X_train, X_test, y_train, y_test = train_test_split(X[:split], y[:split], test_size=0.2,
+                                                            random_state=123)
+        fig = plt.figure()
+        norm = pipeline.named_steps['norm']
+        scaler = pipeline.named_steps['scaler']
+        pca = pipeline.named_steps['pca']
+        umap = pipeline.named_steps['umap']
+        clf =  pipeline.named_steps['clf']
+
+        X_train = norm.fit_transform(X_train, y_train)
+        X_test = norm.transform(X_test)
+        X_train = scaler.fit_transform(X_train, y_train)
+        X_test = scaler.transform(X_test)
+        X_train = pca.fit_transform(X_train, y_train)
+        X_test = pca.transform(X_test)
+        X_train = umap.fit_transform(X_train, y_train)
+        X_test = umap.transform(X_test)
+        # X = np.concatenate([X_train, X_test])
+        clf.fit(X_train, y_train)
+        scores = Scores.get_scores(clf, X_test, y_test)
+        # scores = cross_validate(clf, X, y, scoring=Scores.scores, cv=5)
+
+        iter_score = {
+            "scaler": pipeline.named_steps["scaler"],
+            "scaler_object": pipeline.named_steps["scaler"],
+            "pca": pipeline.named_steps["pca"],
+            "pca_object": pipeline.named_steps["pca"],
+            "umap": pipeline.named_steps["umap"],
+            "umap_object": pipeline.named_steps["umap"],
+            # "log": clf,
+            # "log_object": clf,
+        }
+
+        for score, k_val_arr in scores.items():
+            iter_score[score] = k_val_arr.mean()
+            iter_score[score + "_std"] = 2 * k_val_arr.std()
+        if score_df.empty:
+            score_df = pd.DataFrame(data=iter_score, index=[s_i])
+        else:
+            score_df.loc[s_i] = iter_score
+        reg_time = time.monotonic() - start_time
+        print("iter: %d | computation time: %s" % ( s_i,
+            str(datetime.timedelta(seconds=reg_time)).split('.', 2)[0]))
+
+    test_score = "test_balanced_accuracy"
+    plt.plot(splits[1:], score_df[test_score])
+    plt.errorbar(splits[1:], score_df[test_score], yerr=score_df[test_score+"_std"], fmt='o', color='black',
+                ecolor='black', elinewidth=2, capsize=10, capthick=2)
+    plt.show()
+    print(score_df)
+    # #Dump score to file
+    custom_identifier = "learning_curve"
+    date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+    score_df.to_csv(".\Outputs\%s_%s.csv" % (custom_identifier, date_string))
+    score_df.to_pickle(".\Outputs\%s_%s.pkl" % (custom_identifier, date_string))
+
+def plot_umap_data_transform(pipeline, X, y, fit_all = True, plot_hist = True, save_to_file = False):
+    start_time = time.monotonic()
+    # Splitting into train and test sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
+                                                        random_state=123)
+
+    fig = plt.figure()
+    norm = pipeline.named_steps['norm']
+    scaler = pipeline.named_steps['scaler']
+    pca = pipeline.named_steps['pca']
+    umap = pipeline.named_steps['umap']
+    clf =  pipeline.named_steps['clf']
+    if fit_all:
+        X = norm.fit_transform(X, y)
+        X = scaler.fit_transform(X, y)
+        X = pca.fit_transform(X, y)
+        u = umap.fit_transform(X, y)
+    else:
+        X_train = norm.fit_transform(X_train, y_train)
+        X_test = norm.transform(X_test)
+        X_train = scaler.fit_transform(X_train, y_train)
+        X_test = scaler.transform(X_test)
+        X_train = pca.fit_transform(X_train, y_train)
+        X_test = pca.transform(X_test)
+        u_train = umap.fit_transform(X_train, y_train)
+        u_test = umap.transform(X_test)
+        print(u_test.shape)
+        u = np.concatenate([u_train, u_test])
+        print(u.shape)
+    # Access the n_components from the PCA step
+    n_components = pipeline.named_steps["umap"].n_components
+    colors = np.array(["darkred"] * len(y[y == 0]))
+    colors = np.concatenate((colors, ["darkgreen"] * len(y[y == 1])), axis=0)
+
+    if n_components == 1:
+        ax = fig.add_subplot(111)
+        ax.scatter(u[:, 0], range(len(u)), c=colors, alpha=0.01)
+    if n_components == 2:
+        if plot_hist:
+
+            gs = fig.add_gridspec(2, 2, width_ratios=(4, 1), height_ratios=(1, 4),
+                                  left=0.1, right=0.9, bottom=0.1, top=0.9,
+                                  wspace=0.05, hspace=0.05)
+            # Create the Axes.
+            ax = fig.add_subplot(gs[1, 0])
+            ax_histx = fig.add_subplot(gs[0, 0], sharex=ax)
+            ax_histy = fig.add_subplot(gs[1, 1], sharey=ax)
+            # Draw the scatter plot and marginals.
+            scatter_hist(u[:, 0], u[:, 1], colors, ax, ax_histx, ax_histy)
+        else:
+            ax = fig.add_subplot(111)
+            ax.scatter(u[:, 0], u[:, 1], c=colors, alpha=0.01)
+    if n_components == 3:
+        ax = fig.add_subplot(111, projection='3d')
+        ax.scatter(u[:, 0], u[:, 1], u[:, 2], s=100, c=colors, alpha=0.01)
+
+    scores = cross_validate(clf, u, y, scoring=Scores.scores, cv=5)
+    # Calculate mean from k-validations
+
+    iter_score = {
+        "scaler": pipeline.named_steps["scaler"],
+        "scaler_object": pipeline.named_steps["scaler"],
+        "pca": pipeline.named_steps["pca"],
+        "pca_object": pipeline.named_steps["pca"],
+        "umap": pipeline.named_steps["umap"],
+        "umap_object": pipeline.named_steps["umap"],
+        # "log": clf,
+        # "log_object": clf,
+    }
+
+    for score, k_val_arr in scores.items():
+        iter_score[score] = k_val_arr.mean()
+        iter_score[score + "_std"] = 2 * k_val_arr.std()
+    score_df = pd.DataFrame(data=iter_score, index=[0])
+    print(score_df)
+    reg_time = time.monotonic() - start_time
+    print("computation time: %s" % (
+        str(datetime.timedelta(seconds=reg_time)).split('.', 2)[0]))
+    plt.show()
+
+    custom_identifier = "learning_curve"
+    date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+    score_df.to_csv(".\Outputs\%s_%s.csv" % (custom_identifier, date_string))
+
+
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     output_folder = r"%s\Outputs"%os.getcwd()
     plt.rcParams.update({'font.size': 16})
-
 
     plotter = Plotter(
         fig_size=(16, 16), #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
@@ -298,6 +476,7 @@ if __name__ == '__main__':
         save_to_file= output_folder+r"\combined_data.csv",
         columns_to_add={
             "umap_fit_y": [True, False, False, True, True],
-            "umap_transform_all": [False, False, False, True, True]
+            "umap_transform_all": [False, False, False, True, False]
         }
     )
+
