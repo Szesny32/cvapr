@@ -73,7 +73,7 @@ class Plotter():
         asc_bool = False
         if score == "test_BIC":
             asc_bool = True
-
+        print(data_frame)
         indices = data_frame[score].sort_values(ascending=asc_bool).index
         sorted = data_frame.loc[indices[:amount]]
 
@@ -113,6 +113,13 @@ class Plotter():
         temp = np.array([])
 
         for lab in self.labels_from_cols:
+            if not lab in data_frame.columns:
+                # d_i = self.score_data.index(data_frame)
+                # if self.custom_labels[d_i] != None:
+                #     labels = self.custom_labels[d_i]
+                # else:
+                labels = [""]
+                continue
             labels = np.array(data_frame[lab])
             for l_i, label in enumerate(labels):
                 labels[l_i] = shorten_label(label)
@@ -179,7 +186,6 @@ class Plotter():
             colors = np.array([])
             color_i = 0
             for d_i, d in enumerate(self.score_data):
-
                 if isinstance(plot_n_best_from_files, List):
                     d = self.get_best_by_score(d, plot_n_best_from_files[d_i], score="test_BIC")
                 elif isinstance(plot_n_best_from_files, int):
@@ -275,7 +281,7 @@ def scatter_hist(x, y, colors: List[str], ax, ax_histx, ax_histy):
     ax_histy.tick_params(axis="y", labelleft=False)
 
     # the scatter plot:
-    ax.scatter(x, y, c = colors, alpha = 0.2)
+    ax.scatter(x, y, c = colors, alpha = 0.2, s=0.5)
 
     # now determine nice limits by hand:
     binwidth = 0.25
@@ -346,17 +352,24 @@ def plot_learning_curve(pipeline, X, y, n_splits = 2, save_to_file = True):
 
     test_score = "test_balanced_accuracy"
     plt.plot(splits[1:], score_df[test_score])
-    plt.errorbar(splits[1:], score_df[test_score], yerr=score_df[test_score+"_std"], fmt='o', color='black',
-                ecolor='black', elinewidth=2, capsize=10, capthick=2)
+    # plt.errorbar(splits[1:], score_df[test_score], yerr=score_df[test_score+"_std"], fmt='o', color='black',
+    #             ecolor='black', elinewidth=2, capsize=10, capthick=2)
+    plt.ylabel("Accuracy")
+    plt.xlabel("n_samples")
     plt.show()
     print(score_df)
     # #Dump score to file
     custom_identifier = "learning_curve"
     date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-    score_df.to_csv(".\Outputs\%s_%s.csv" % (custom_identifier, date_string))
+    score_df.to_csv(".\Outputs\%s_%s.csv" % (custom_identifier, date_string), sep=";")
     score_df.to_pickle(".\Outputs\%s_%s.pkl" % (custom_identifier, date_string))
 
-def plot_umap_data_transform(pipeline, X, y, fit_all = True, plot_hist = True, save_to_file = False):
+def plot_umap_data_transform(pipeline,
+                             X, y,
+                             fit_all = True,
+                             make_pca = False,
+                             plot_hist = True,
+                             save_to_file = False):
     start_time = time.monotonic()
     # Splitting into train and test sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2,
@@ -367,19 +380,25 @@ def plot_umap_data_transform(pipeline, X, y, fit_all = True, plot_hist = True, s
     scaler = pipeline.named_steps['scaler']
     pca = pipeline.named_steps['pca']
     umap = pipeline.named_steps['umap']
+    umap.random_state = 123
     clf =  pipeline.named_steps['clf']
+    clf.random_state = 123
     if fit_all:
         X = norm.fit_transform(X, y)
         X = scaler.fit_transform(X, y)
-        X = pca.fit_transform(X, y)
-        u = umap.fit_transform(X, y)
+        if make_pca:
+            X = pca.fit_transform(X, y)
+        y_wb = np.array(y)
+        y_wb[::8] = -1
+        u = umap.fit_transform(X, y_wb)
     else:
         X_train = norm.fit_transform(X_train, y_train)
         X_test = norm.transform(X_test)
         X_train = scaler.fit_transform(X_train, y_train)
         X_test = scaler.transform(X_test)
-        X_train = pca.fit_transform(X_train, y_train)
-        X_test = pca.transform(X_test)
+        if make_pca:
+            X_train = pca.fit_transform(X_train, y_train)
+            X_test = pca.transform(X_test)
         u_train = umap.fit_transform(X_train, y_train)
         u_test = umap.transform(X_test)
         print(u_test.shape)
@@ -393,9 +412,8 @@ def plot_umap_data_transform(pipeline, X, y, fit_all = True, plot_hist = True, s
     if n_components == 1:
         ax = fig.add_subplot(111)
         ax.scatter(u[:, 0], range(len(u)), c=colors, alpha=0.01)
-    if n_components == 2:
+    if n_components == 2 or n_components >3:
         if plot_hist:
-
             gs = fig.add_gridspec(2, 2, width_ratios=(4, 1), height_ratios=(1, 4),
                                   left=0.1, right=0.9, bottom=0.1, top=0.9,
                                   wspace=0.05, hspace=0.05)
@@ -436,9 +454,9 @@ def plot_umap_data_transform(pipeline, X, y, fit_all = True, plot_hist = True, s
         str(datetime.timedelta(seconds=reg_time)).split('.', 2)[0]))
     plt.show()
 
-    custom_identifier = "learning_curve"
+    custom_identifier = "umap"
     date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
-    score_df.to_csv(".\Outputs\%s_%s.csv" % (custom_identifier, date_string))
+    score_df.to_csv(".\Outputs\%s_%s.csv" % (custom_identifier, date_string), sep=";")
 
 
 
@@ -448,7 +466,7 @@ if __name__ == '__main__':
     plt.rcParams.update({'font.size': 16})
 
     plotter = Plotter(
-        fig_size=(16, 16), #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
+        fig_size=(16, 20), #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
         # fig_size=(16, 8), #Wychodzi poza ekran, ale dobrze widoczne po skopiowaniu
         labels_from_cols=("pca", "umap", "log"), #"log"
         label_shortening_start=7,
@@ -457,26 +475,29 @@ if __name__ == '__main__':
     )
     # plotter.add_score_file(output_folder+r"\19BIC_grid_umap_fit_all_with_y.csv", "1")
     plotter.add_score_file(output_folder+r"\normalized_umap_test_ys_10files_GRID_13_06_2023_21_38_04.csv",
-                           "UMAP fit train with ys")
+                           "UMAP fit train with ys", custom_labels=None)
     plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_13_06_2023_22_34_13.csv",
-                           "UMAP fit train without ys")
+                           "UMAP fit train without ys", custom_labels=None)
     plotter.add_score_file(output_folder + r"\normalized_umap_test_no_ys_10files_GRID_19_06_2023_21_37_17.csv",
-                           "UMAP fit train without ys2")
+                           "UMAP fit train without ys2", custom_labels=None)
     plotter.add_score_file(output_folder + r"\19BIC_grid_umap_fit_all_with_y.csv",
-                           "UMAP fit all with ys")
+                           "UMAP fit all with ys", custom_labels=None)
     plotter.add_score_file(output_folder + r"\normalized_umap_test_ys_10files_GRID_20_06_2023_12_37_24.csv",
-                           "UMAP fit all with ys2")
+                           "UMAP fit all with ys2", custom_labels=None)
+    plotter.add_score_file(output_folder + r"\Whole_DS_20_06_2023_19_27_21.csv",
+                           "Before Optimization", custom_labels=None)
 
-    # plotter.plot_scores(
-    #     params_to_plot="all",
-    #     plot_n_best_from_files=[1, 1, 1, 1],
-    # )
 
-    plotter.combine_dfs(
-        save_to_file= output_folder+r"\combined_data.csv",
-        columns_to_add={
-            "umap_fit_y": [True, False, False, True, True],
-            "umap_transform_all": [False, False, False, True, False]
-        }
+    plotter.plot_scores(
+        params_to_plot="all",
+        plot_n_best_from_files=[1, 1, 1, 1, 1, 1],
     )
+
+    # plotter.combine_dfs(
+    #     save_to_file= output_folder+r"\combined_data.csv",
+    #     columns_to_add={
+    #         "umap_fit_y": [True, False, False, True, True],
+    #         "umap_transform_all": [False, False, False, True, False]
+    #     }
+    # )
 

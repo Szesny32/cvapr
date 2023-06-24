@@ -19,6 +19,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from collections import OrderedDict
+from sklearn import set_config
 # import seaborn as sns
 from Plotter import *
 import Scores
@@ -51,24 +52,26 @@ class KickstartedPredict():
     def run(self) -> None:
         self.load_data()
         self.prepare_data()
-
+        print("Q")
         pipe = Pipeline([
             ("norm", MinMaxScaler()),
             ("scaler", QuantileTransformer()),
             ("pca", PCA(n_components=40)),
-            ("umap", UMAP(n_components=10, n_neighbors=50, min_dist=0.5)),
+            ("umap", UMAP(n_components=10, n_neighbors=50, min_dist=0.5, target_metric="categorical")),
             ("clf", LogisticRegression(C = 0.1, penalty="l1", solver="saga")),
             # ("clf", SVC())
         ])
 
         y: pd.DataFrame = self.df_prepared['state']
         X_all: pd.DataFrame = self.df_prepared.drop('state', axis=1)
-
-        # plot_learning_curve(pipe, X_all, y, n_splits=5)
-        plot_umap_data_transform(pipe, X_all, y, fit_all=False, save_to_file=True)
-
+        # cols = ['launch_duration', 'created_duration', 'name_word_len', 'blurb_word_len', 'staff_pick', 'category_food']
+        # X_all = X_all[cols]
+        # self.evaluate_without_dim_red(X_all, y)
+        # print(X_all.columns)
+        # # plot_learning_curve(pipe, X_all, y, n_splits=15)
+        plot_umap_data_transform(pipe, X_all, y, fit_all=True, save_to_file=False, make_pca=True)
+        # self.evaluate_without_dim_red(X_all, y)
         #LearningCurve
-
 
         # self.hyper_paramether_tuning()
 
@@ -167,7 +170,7 @@ class KickstartedPredict():
                 "n_components": [15]
             },
             "UMAP": {
-                "n_components": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                "n_components": [2],
                 "n_neighbors": [20, 50, 100],
                 "min_dist": [0.5, 0.75, 1.0]
             },
@@ -225,8 +228,26 @@ class KickstartedPredict():
         # with open(r"%s\Outputs\DIFF_EVO_%s.pickle"%(os.getcwd(), date_string), "wb") as output_file:
         #     pickle.dump(self.score, output_file)
 
-
-
+    def evaluate_without_dim_red(self, X, y):
+        X = np.array(X)
+        y = np.array(y)
+        print(X.shape)
+        X[:, :7] = QuantileTransformer().fit_transform(MinMaxScaler().fit_transform(X[:, :7]))
+        y_wb = np.array(y)
+        y_wb[::8]=-1
+        X = UMAP().fit_transform(X, y_wb)
+        # X = QuantileTransformer().fit_transform(MinMaxScaler().fit_transform(X))
+        scores = cross_validate(LogisticRegression(random_state=123), X, y, cv=5, scoring=Scores.scores, )
+        iter_score = {}
+        for score, k_val_arr in scores.items():
+            iter_score[score] = k_val_arr.mean()
+            iter_score[score + "_std"] = 2 * k_val_arr.std()
+        score_df = pd.DataFrame(data=iter_score, index=[0])
+        score_df.loc[1] = iter_score
+        print(score_df)
+        custom_identifier = "Whole_DS"
+        date_string = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
+        score_df.to_csv(".\Outputs\%s_%s.csv" % (custom_identifier, date_string), sep=";")
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
